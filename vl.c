@@ -119,6 +119,10 @@ int main(int argc, char **argv)
 
 #include "ui/qemu-spice.h"
 #include "qapi/string-input-visitor.h"
+// CF FIES
+#include "fault-injection-collector.h"
+#include "fault-injection-config.h"
+// CF FIES END
 #include "qapi/opts-visitor.h"
 #include "qom/object_interfaces.h"
 #include "qapi-event.h"
@@ -184,6 +188,13 @@ bool boot_strict;
 uint8_t *boot_splash_filedata;
 size_t boot_splash_filedata_size;
 uint8_t qemu_extra_params_fw[2];
+
+// CF FIES
+unsigned int profile_ram_addresses = 0;
+unsigned int profile_pc_status = 0;
+unsigned int profile_registers = 0;
+unsigned int profile_condition_flags = 0;
+// CF FIES END
 
 int icount_align_option;
 
@@ -1956,7 +1967,7 @@ static void main_loop(void)
 
 static void version(void)
 {
-    printf("QEMU emulator version " QEMU_VERSION QEMU_PKGVERSION "\n"
+    printf("CF/FIES emulator version " QEMU_VERSION QEMU_PKGVERSION "\n"
            QEMU_COPYRIGHT "\n");
 }
 
@@ -3050,6 +3061,20 @@ int main(int argc, char **argv, char **envp)
     const char *initrd_filename;
     const char *kernel_filename, *kernel_cmdline;
     const char *boot_order = NULL;
+    
+// CF FIES
+    char *sep_str, *opt_str;
+    int param_num = 0;
+    enum parameter_names
+    {
+        //fault_counter,
+        fault_library_path,
+        //sbst_cycle_count,
+        //file_input_to_use_index,
+        //file_input_to_use_address_index
+    };
+// CF FIES END
+    
     const char *boot_once = NULL;
     DisplayState *ds;
     int cyls, heads, secs, translation;
@@ -3845,6 +3870,95 @@ int main(int argc, char **argv, char **envp)
                 olist = qemu_find_opts("machine");
                 qemu_opts_parse_noisily(olist, "usb=on", false);
                 break;
+            // CF FIES
+            case QEMU_OPTION_profiling:
+                error_report("QEMU started with Profiling");
+                if (!optarg)
+                {
+                    //if no options are given all profiling functions are activated
+                    profile_ram_addresses = 1;
+                    profile_condition_flags = 1;
+                    profile_pc_status = 1;
+                    profile_registers = 1;
+                }
+                opt_str = (char*)malloc((strlen(optarg)+1) * sizeof(char));
+                strcpy(opt_str, optarg);
+                int i;
+                for (i = 0; i < strlen(opt_str); i++)
+                {
+                    char c = opt_str[i];
+                    switch (c) {
+                        case 'r':
+                            profile_registers = 1;
+                            error_report("Profile registers");
+                            break;
+                        case 'm':
+                            profile_ram_addresses = 1;
+                            error_report("Profile memory");
+                            break;
+                        case 'c':
+                            profile_condition_flags = 1;
+                            break;
+                        case 'p':
+                            profile_pc_status = 1;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            case QEMU_OPTION_fi:
+                /*
+                 * no automation!
+                 */
+                error_report("QEMU started with Fault Injection");
+                if (!optarg)
+                {
+                    set_do_fault_injection(1);
+                    break;
+                }
+
+                opt_str = (char*)malloc((strlen(optarg)+1) * sizeof(char));
+                strcpy(opt_str, optarg);
+
+                sep_str = strtok(opt_str, ",");
+
+                for (param_num = 0; sep_str != NULL; param_num++)
+                {
+                    switch(param_num)
+                    {
+                /*  case fault_counter:
+                        fault_counter_address =  strtol(sep_str, NULL, 16);
+                        break;*/
+                    case fault_library_path:
+                        fault_library_name = (char*)malloc((strlen(sep_str) + 1) * sizeof(char));
+                        strcpy(fault_library_name, sep_str);
+                        error_report("Fault libary name: %s",fault_library_name);
+                        break;
+                    /*case sbst_cycle_count:
+                        //sbst_cycle_count_address =  strtol(sep_str, NULL, 16);
+                        break;
+                    case file_input_to_use_index:
+                        file_input_to_use = strtol(sep_str, NULL, 16);
+                        break;
+                    case file_input_to_use_address_index:
+                        file_input_to_use_address = strtol(sep_str, NULL, 16);
+                        break;*/
+                    default:
+                        fprintf(stderr, "Too many parameters specified!\n");
+                        error_report("Too many parameters specified!\n");
+                        break;
+                    }
+
+                    sep_str = strtok(NULL, ",");
+                }
+
+                set_do_fault_injection(1);
+               // fault_reload_arg();
+
+                free(opt_str);
+                break;
+            // CF FIES
             case QEMU_OPTION_usbdevice:
                 error_report("'-usbdevice' is deprecated, please use "
                              "'-device usb-...' instead");

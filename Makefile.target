@@ -93,6 +93,11 @@ all: $(PROGS) stap
 # cpu emulator library
 obj-y += exec.o
 obj-y += accel/
+# CF FIES
+obj-y += fault-injection-injector.o fault-injection-profiler.o
+obj-y += fault-injection-controller.o fault-injection-library.o
+obj-y += fault-injection-data-analyzer.o
+# CF FIES END
 obj-$(CONFIG_TCG) += tcg/tcg.o tcg/tcg-op.o tcg/optimize.o
 obj-$(CONFIG_TCG) += tcg/tcg-common.o
 obj-$(CONFIG_TCG_INTERPRETER) += tcg/tci.o

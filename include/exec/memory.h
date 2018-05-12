@@ -1936,12 +1936,17 @@ MemTxResult flatview_read(FlatView *fv, hwaddr addr, MemTxAttrs attrs,
     return result;
 }
 
-static inline MemTxResult address_space_read(AddressSpace *as, hwaddr addr,
+MemTxResult address_space_read(AddressSpace *as, hwaddr addr,
                                              MemTxAttrs attrs, uint8_t *buf,
-                                             int len)
-{
-    return flatview_read(address_space_to_flatview(as), addr, attrs, buf, len);
-}
+                                             int len);
+//{
+// CF FIES	
+//	MemTxResult temp = flatview_read(address_space_to_flatview(as), addr, attrs, buf, len);
+//    fault_injection_controller_init(NULL, &addr, (uint32_t*)buf, FI_MEMORY_CONTENT, false);
+//    return temp;
+//    //was: return flatview_read(address_space_to_flatview(as), addr, attrs, buf, len);
+// CF FIES	
+//}
 
 /**
  * address_space_read_cached: read from a cached RAM region

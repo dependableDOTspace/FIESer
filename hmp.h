@@ -21,6 +21,10 @@
 
 void hmp_info_name(Monitor *mon, const QDict *qdict);
 void hmp_info_version(Monitor *mon, const QDict *qdict);
+// CF FIES
+void hmp_info_faults(Monitor *mon, const QDict *qdict);
+void hmp_fault_reload(Monitor *mon, const QDict *qdict);
+// CF FIES END
 void hmp_info_kvm(Monitor *mon, const QDict *qdict);
 void hmp_info_status(Monitor *mon, const QDict *qdict);
 void hmp_info_uuid(Monitor *mon, const QDict *qdict);

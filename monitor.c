@@ -78,6 +78,12 @@
 #include "qemu/cutils.h"
 #include "qapi/qmp/dispatch.h"
 
+// CF FIES
+#include "fault-injection-collector.h"
+#include "fault-injection-controller.h"
+#include "fault-injection-config.h"
+// CF FIES END
+
 #if defined(TARGET_S390X)
 #include "hw/s390x/storage-keys.h"
 #include "hw/s390x/storage-attributes.h"
@@ -337,6 +343,7 @@ static void monitor_puts(Monitor *mon, const char *str)
             break;
         if (c == '\n') {
             qstring_append_chr(mon->outbuf, '\r');
+            data_collector_write(qstring_get_str(mon->outbuf));
         }
         qstring_append_chr(mon->outbuf, c);
         if (c == '\n') {
@@ -2612,6 +2619,9 @@ static const char *get_command_name(const char *cmdline,
         len = nlen - 1;
     memcpy(cmdname, pstart, len);
     cmdname[len] = '\0';
+// CF FIES    
+    data_collector_write(cmdname);
+// CF FIES END
     return p;
 }
 
@@ -3995,7 +4005,7 @@ static void monitor_event(void *opaque, int event)
         break;
 
     case CHR_EVENT_OPENED:
-        monitor_printf(mon, "QEMU %s monitor - type 'help' for more "
+        monitor_printf(mon, "CF/FIES %s monitor - type 'help' for more "
                        "information\n", QEMU_VERSION);
         if (!mon->mux_out) {
             readline_restart(mon->rs);
@@ -4081,6 +4091,19 @@ void monitor_init(Chardev *chr, int flags)
     static int is_first_init = 1;
     Monitor *mon;
 
+// CF FIES
+    if (get_do_fault_injection())
+    {
+    	data_collector = fopen(DATA_COLLECTOR_FILENAME, "w");
+    	if (data_collector == NULL)
+    	{
+            fprintf(stderr, "Error opening file!\n");
+    	    exit(1);
+    	}
+    	fclose(data_collector);
+    }
+// CF FIES END
+
     if (is_first_init) {
         monitor_qapi_event_init();
         sortcmdlist();
@@ -4112,6 +4135,9 @@ void monitor_init(Chardev *chr, int flags)
 
     qemu_mutex_lock(&monitor_lock);
     QLIST_INSERT_HEAD(&mon_list, mon, entry);
+// CF FIES
+    setMonitor(mon);
+// CF FIES END
     qemu_mutex_unlock(&monitor_lock);
 }
 

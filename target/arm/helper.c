@@ -18,6 +18,10 @@
 
 #define ARM_CPU_FREQ 1000000000 /* FIXME: 1 GHz, should be configurable */
 
+// CF FIES
+//extern char is_safe_rtos;
+// CF FIES END
+
 #ifndef CONFIG_USER_ONLY
 /* Cacheability and shareability attributes for a memory access */
 typedef struct ARMCacheAttrs {
@@ -7618,7 +7622,10 @@ static void arm_cpu_do_interrupt_aarch32(CPUState *cs)
 
     if (new_mode == ARM_CPU_MODE_MON) {
         addr += env->cp15.mvbar;
+// CF FIES
+    //} else if (A32_BANKED_CURRENT_REG_GET(env, sctlr) & SCTLR_V || is_safe_rtos) {
     } else if (A32_BANKED_CURRENT_REG_GET(env, sctlr) & SCTLR_V) {
+// CF FIES END
         /* High vectors. When enabled, base address cannot be remapped. */
         addr += 0xffff0000;
     } else {

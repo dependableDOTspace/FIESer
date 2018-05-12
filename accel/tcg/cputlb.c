@@ -32,6 +32,7 @@
 #include "exec/log.h"
 #include "exec/helper-proto.h"
 #include "qemu/atomic.h"
+#include "fault-injection-controller.h"
 
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
 /* #define DEBUG_TLB */
@@ -789,10 +790,15 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         cpu_transaction_failed(cpu, physaddr, addr, size, MMU_DATA_LOAD,
                                mmu_idx, iotlbentry->attrs, r, retaddr);
     }
+    // CF FIES
+    uint64_t addr64 = addr;
+    fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
+    // CF FIES END
+
     if (locked) {
         qemu_mutex_unlock_iothread();
     }
-
+    
     return val;
 }
 
@@ -813,6 +819,11 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     }
     cpu->mem_io_vaddr = addr;
     cpu->mem_io_pc = retaddr;
+    
+    // CF FIES
+    uint64_t addr64 = addr;
+    fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
+    // CF FIES END
 
     if (mr->global_locking && !qemu_mutex_iothread_locked()) {
         qemu_mutex_lock_iothread();

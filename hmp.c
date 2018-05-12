@@ -48,6 +48,10 @@
 #include <spice/enums.h>
 #endif
 
+#include "fault-injection-data-analyzer.h"
+#include "fault-injection-library.h"
+#include "fault-injection-config.h"
+
 static void hmp_handle_error(Monitor *mon, Error **errp)
 {
     assert(errp);
@@ -78,6 +82,177 @@ void hmp_info_version(Monitor *mon, const QDict *qdict)
                    info->package);
 
     qapi_free_VersionInfo(info);
+}
+
+void hmp_fault_reload(Monitor *mon, const QDict *qdict)
+{
+	//error_report("HMP Fault reload...\n");
+    const char *filename;
+
+    if (qdict)
+    	filename = qdict_get_str(qdict, "filename");
+    else
+    	filename = fault_library_name;
+
+    Error *errp = NULL;
+
+    qmp_fault_reload(mon, filename, &errp);
+    hmp_handle_error(mon, &errp);
+
+    if (fault_library_name)
+      free(fault_library_name);
+}
+
+void hmp_info_faults(Monitor *mon, const QDict *qdict)
+{
+	FaultInfoList *fault_list = NULL, *fault = NULL;
+	int total_num_injected_faults = 0, total_num_detected_faults = 0;
+	float dc_total = 0.0f;
+
+	int total_num_injected_faults_ram_trans = 0, total_num_injected_faults_ram_perm = 0;
+	int total_num_injected_faults_cpu_trans = 0, total_num_injected_faults_cpu_perm = 0;
+	int total_num_injected_faults_register_trans = 0, total_num_injected_faults_register_perm = 0;
+
+//	int total_num_detected_faults_ram_trans = 0, total_num_detected_faults_ram_perm = 0;
+//	int total_num_detected_faults_cpu_trans = 0, total_num_detected_faults_cpu_perm = 0;
+//	int total_num_detected_faults_register_trans = 0, total_num_detected_faults_register_perm = 0;
+//
+//	float dc_ram_trans = 0.0f, dc_ram_perm= 0.0f;
+//	float dc_cpu_trans = 0.0f, dc_cpu_perm= 0.0f;
+//	float dc_register_trans = 0.0f, dc_register_perm= 0.0f;
+
+	fault_list = qmp_query_faults(NULL);
+
+	monitor_printf(mon, "*** QEMU V2 ***\n");
+	monitor_printf(mon, "--------------------------------------------------------------------------------\n");
+    for (fault = fault_list; fault; fault = fault->next)
+    {
+    	monitor_printf(mon, "id: %d\n", (int) fault->value->id);
+    	monitor_printf(mon, "mode: %s\n", fault->value->mode);
+    	monitor_printf(mon, "component: %s\n", fault->value->component);
+    	monitor_printf(mon, "target: %s\n", fault->value->target);
+
+    	if (fault->value->type != NULL)
+    		monitor_printf(mon, "type: %s\n", fault->value->type);
+
+    	if (fault->value->duration != NULL)
+        	monitor_printf(mon, "duration: %s\n", fault->value->duration);
+
+    	if (fault->value->interval != NULL)
+        	monitor_printf(mon, "interval: %s\n", fault->value->interval);
+
+    	if (fault->value->timer != NULL)
+        	monitor_printf(mon, "timer: %s\n", fault->value->timer);
+
+    	if (fault->value->trigger != NULL)
+        	monitor_printf(mon, "trigger: %s\n", fault->value->trigger);
+
+    	monitor_printf(mon, "parameters: \n");
+
+    	if (fault->value->params->address != -1)
+    		monitor_printf(mon, "\taddress: 0x%x\n", (int) fault->value->params->address);
+
+    	if (fault->value->params->cf_address != -1)
+    		monitor_printf(mon, "\tcf_address: 0x%x\n", (int) fault->value->params->cf_address);
+
+    	if (fault->value->params->mask != -1)
+    		monitor_printf(mon, "\tmask: 0x%x\n", (int) fault->value->params->mask);
+
+    	if (fault->value->params->instruction != -1)
+    		monitor_printf(mon, "\tinstruction address: 0x%x\n", (int) fault->value->params->instruction);
+
+    	if (fault->value->params->set_bit != -1)
+    		monitor_printf(mon, "\tset bit: 0x%x\n", (int) fault->value->params->set_bit);
+
+    	monitor_printf(mon, "active: %d\n", (int) fault->value->is_active);
+
+    	monitor_printf(mon, "--------------------------------------------------------------------------------\n");
+    }
+
+    if (fault_list == NULL){
+    	return;
+	}
+
+	monitor_printf(mon, "\n------------------------------Statistics----------------------------------------\n");
+
+
+	total_num_injected_faults_ram_trans = get_num_injected_faults_ram_trans();
+	total_num_injected_faults_ram_perm = get_num_injected_faults_ram_perm();
+
+	total_num_injected_faults_cpu_trans = get_num_injected_faults_cpu_trans();
+	total_num_injected_faults_cpu_perm = get_num_injected_faults_cpu_perm();
+
+	total_num_injected_faults_register_trans = get_num_injected_faults_register_trans();
+	total_num_injected_faults_register_perm = get_num_injected_faults_register_perm();
+
+	monitor_printf(mon, "Injected faults: \t\t | Number: \n");
+	monitor_printf(mon, "RAM permanent \t\t\t | %d \n", total_num_injected_faults_ram_perm);
+	monitor_printf(mon, "RAM transient \t\t\t | %d \n", total_num_injected_faults_ram_trans);
+	monitor_printf(mon, "CPU permanent \t\t\t | %d \n", total_num_injected_faults_cpu_perm);
+	monitor_printf(mon, "CPU transient \t\t\t | %d \n", total_num_injected_faults_cpu_trans);
+	monitor_printf(mon, "Register permanent \t\t | %d \n", total_num_injected_faults_register_perm);
+	monitor_printf(mon, "Register transient \t\t | %d \n", total_num_injected_faults_register_trans);
+
+	monitor_printf(mon, "--------------------------------------------------------------------------------\n");
+
+//	total_num_detected_faults_ram_perm = get_num_detected_faults_ram_perm();
+//	total_num_detected_faults_ram_trans = get_num_detected_faults_ram_trans();
+//
+//	total_num_detected_faults_cpu_perm = get_num_detected_faults_cpu_perm();
+//	total_num_detected_faults_cpu_trans = get_num_detected_faults_cpu_trans();
+//
+//	total_num_detected_faults_register_perm = get_num_detected_faults_register_perm();
+//	total_num_detected_faults_register_trans = get_num_detected_faults_register_trans();
+//
+//	monitor_printf(mon, "Detected faults: \t\t | Number: \n");
+//	monitor_printf(mon, "RAM permanent \t\t\t | %d \n", total_num_detected_faults_ram_perm);
+//	monitor_printf(mon, "RAM transient \t\t\t | %d \n", total_num_detected_faults_ram_trans);
+//	monitor_printf(mon, "CPU permanent \t\t\t | %d \n", total_num_detected_faults_cpu_perm);
+//	monitor_printf(mon, "CPU transient \t\t\t | %d \n", total_num_detected_faults_cpu_trans);
+//	monitor_printf(mon, "Register permanent \t\t | %d \n", total_num_detected_faults_register_perm);
+//	monitor_printf(mon, "Register transient \t\t | %d \n", total_num_detected_faults_register_trans);
+//
+//	monitor_printf(mon, "--------------------------------------------------------------------------------\n");
+//
+//	if (total_num_injected_faults_ram_perm)
+//		dc_ram_perm = (total_num_detected_faults_ram_perm * 100.0f) / total_num_injected_faults_ram_perm;
+//
+//	if (total_num_injected_faults_ram_trans)
+//		dc_ram_trans = (total_num_detected_faults_ram_trans * 100.0f) / total_num_injected_faults_ram_trans;
+//
+//	if (total_num_injected_faults_cpu_perm)
+//		dc_cpu_perm = (total_num_detected_faults_cpu_perm * 100.0f) / total_num_injected_faults_cpu_perm;
+//	if (total_num_injected_faults_cpu_trans)
+//		dc_cpu_trans = (total_num_detected_faults_cpu_trans * 100.0f) / total_num_injected_faults_cpu_trans;
+//
+//	if (total_num_injected_faults_register_perm)
+//		dc_register_perm = (total_num_detected_faults_register_perm * 100.0f) / total_num_injected_faults_register_perm;
+//	if (total_num_injected_faults_register_trans)
+//		dc_register_trans = (total_num_detected_faults_register_trans * 100.0f) / total_num_injected_faults_register_trans;
+//
+//	monitor_printf(mon, "Diagnostic coverages: \t\t | Number: \n");
+//	monitor_printf(mon, "RAM permanent \t\t\t | %f \n", dc_ram_perm);
+//	monitor_printf(mon, "RAM transient \t\t\t | %f \n", dc_ram_trans);
+//	monitor_printf(mon, "CPU permanent \t\t\t | %f \n", dc_cpu_perm);
+//	monitor_printf(mon, "CPU transient \t\t\t | %f \n", dc_cpu_trans);
+//	monitor_printf(mon, "Register permanent \t\t | %f \n", dc_register_perm);
+//	monitor_printf(mon, "Register transient \t\t | %f \n", dc_register_trans);
+//
+//	monitor_printf(mon, "--------------------------------------------------------------------------------\n");
+
+	total_num_detected_faults = get_num_detected_faults();
+	total_num_injected_faults = get_num_injected_faults();
+
+	if (total_num_injected_faults)
+		dc_total = (total_num_detected_faults * 100.0f) / total_num_injected_faults;
+
+	monitor_printf(mon, "Total injected faults \t\t | %d \n", total_num_injected_faults);
+	monitor_printf(mon, "Total detected faults \t\t | %d \n", total_num_detected_faults);
+
+	monitor_printf(mon, "Total diagnostic coverage [%c] \t | %f \n", 37, dc_total);
+
+	monitor_printf(mon, "--------------------------------------------------------------------------------\n");
+    qapi_free_FaultInfoList(fault_list);
 }
 
 void hmp_info_kvm(Monitor *mon, const QDict *qdict)

@@ -56,6 +56,10 @@
 
 #include <sys/prctl.h>
 
+#include "fault-injection-library.h"
+#include "fault-injection-data-analyzer.h"
+#include "fault-injection-controller.h"
+
 #ifndef PR_MCE_KILL
 #define PR_MCE_KILL 33
 #endif
@@ -1275,8 +1279,10 @@ static int tcg_cpu_exec(CPUState *cpu)
     ti = profile_getclock();
 #endif
     qemu_mutex_unlock_iothread();
+    //CF: this only locks the CPU
     cpu_exec_start(cpu);
     ret = cpu_exec(cpu);
+    //CF: this only unlocks the CPU
     cpu_exec_end(cpu);
     qemu_mutex_lock_iothread();
 #ifdef CONFIG_PROFILER
@@ -1406,6 +1412,12 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
         deal_with_unplugged_cpus();
     }
 
+// CF FIES
+    delete_fault_list();
+    destroy_id_array();
+    destroy_ops_on_cell();
+// CF FIES END
+
     return NULL;
 }
 
@@ -1515,6 +1527,12 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
         atomic_mb_set(&cpu->exit_request, 0);
         qemu_tcg_wait_io_event(cpu);
     }
+    
+// CF FIES
+    delete_fault_list();
+	destroy_id_array();
+	destroy_ops_on_cell();
+// CF FIES END
 
     return NULL;
 }

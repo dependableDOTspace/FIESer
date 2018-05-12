@@ -36,6 +36,9 @@
 #include "trace-tcg.h"
 #include "exec/log.h"
 
+// CF FIES
+#include "../fault-injection-controller.h"
+// CF FIES END
 
 #define ENABLE_ARCH_4T    arm_dc_feature(s, ARM_FEATURE_V4T)
 #define ENABLE_ARCH_5     arm_dc_feature(s, ARM_FEATURE_V5)
@@ -212,8 +215,22 @@ static void load_reg_var(DisasContext *s, TCGv_i32 var, int reg)
 /* Create a new temporary and set it to the value of a CPU register.  */
 static inline TCGv_i32 load_reg(DisasContext *s, int reg)
 {
+// CF FIES
+/* ORIG:
     TCGv_i32 tmp = tcg_temp_new_i32();
     load_reg_var(s, tmp, reg);
+    return tmp;
+*/
+    TCGv_i32 tcg_reg = tcg_const_i32(reg);
+    TCGv_i32 tmp = tcg_temp_new_i32();
+
+    gen_helper_fault_controller_call_reg_decoder(tcg_reg, cpu_env, tcg_reg);
+    load_reg_var(s, tmp, reg);
+
+    //read
+    gen_helper_fault_controller_call_load_reg(tmp, cpu_env, tmp, tcg_reg);
+    tcg_temp_free_i32(tcg_reg);
+
     return tmp;
 }
 
@@ -221,6 +238,14 @@ static inline TCGv_i32 load_reg(DisasContext *s, int reg)
    marked as dead.  */
 static void store_reg(DisasContext *s, int reg, TCGv_i32 var)
 {
+// CF FIES
+	TCGv_i32 tcg_reg = tcg_const_i32(reg);
+
+    //write
+	gen_helper_fault_controller_call_reg_decoder(tcg_reg, cpu_env, tcg_reg);
+    gen_helper_fault_controller_call_store_reg(var, cpu_env, var, tcg_reg);
+// CF FIES END
+
     if (reg == 15) {
         /* In Thumb mode, we must ignore bit 0.
          * In ARM mode, for ARMv4 and ARMv5, it is UNPREDICTABLE if bits [1:0]
@@ -231,6 +256,9 @@ static void store_reg(DisasContext *s, int reg, TCGv_i32 var)
         s->base.is_jmp = DISAS_JUMP;
     }
     tcg_gen_mov_i32(cpu_R[reg], var);
+// CF FIES
+    tcg_temp_free_i32(tcg_reg);
+// CF FIES END
     tcg_temp_free_i32(var);
 }
 
@@ -12179,17 +12207,39 @@ static void arm_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     DisasContext *dc = container_of(dcbase, DisasContext, base);
     CPUARMState *env = cpu->env_ptr;
     unsigned int insn;
-
+    
     if (arm_pre_translate_insn(dc)) {
         return;
     }
-
+    
     insn = arm_ldl_code(env, dc->pc, dc->sctlr_b);
+    {
+    // CF FIES
+    //FIES hook: instruction VALUE at current PC, but NOT the PC! (dc->pc*)
+    //printf ("FIES: %s:%d hook instruction VALUE at pc=%x, Op=%x\r\n", __func__, __LINE__, dc->pc, insn);
+    
+    uint64_t pc64 = dc->pc;
+    fault_injection_hook(env, &pc64, &insn, FI_INSTRUCTION_VALUE_ARM, -1);
+    // CF FIES END
+    }
+
+    //disassemble next instruction
     dc->insn = insn;
     dc->pc += 4;
+    //CF: actually check the instruction and prepare IM data structures for it
     disas_arm_insn(dc, insn);
 
     arm_post_translate_insn(dc);
+
+    // CF FIES
+    {
+    TCGv_i32 tcg_pc = tcg_const_i32(dc->pc);
+    TCGv_i32 tcg_type = tcg_const_i32(FI_PC_ARM);
+    gen_helper_fault_controller_call_pc(cpu_env, tcg_pc, tcg_type);
+    tcg_temp_free_i32(tcg_pc);
+    tcg_temp_free_i32(tcg_type);
+    }
+    // CF FIES END
 
     /* ARM is a fixed-length ISA.  We performed the cross-page check
        in init_disas_context by adjusting max_insns.  */
@@ -12247,6 +12297,8 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     CPUARMState *env = cpu->env_ptr;
     uint32_t insn;
     bool is_16bit;
+    
+    //CF: FIES does not at all support Thumb/2 mode?! should never go here.
 
     if (arm_pre_translate_insn(dc)) {
         return;
@@ -12254,12 +12306,34 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 
     insn = arm_lduw_code(env, dc->pc, dc->sctlr_b);
     is_16bit = thumb_insn_is_16bit(dc, insn);
-    dc->pc += 2;
     if (!is_16bit) {
+        dc->pc += 2;
         uint32_t insn2 = arm_lduw_code(env, dc->pc, dc->sctlr_b);
 
         insn = insn << 16 | insn2;
+        
+        // CF FIES
+        //FIES hook: instruction VALUE at current PC, but NOT the PC! (dc->pc*)
+        //printf ("FIES: %s:%d hook instruction VALUE at pc=%x, Op=%x\r\n", __func__, __LINE__, dc->pc, insn);
+
+        // decrement the PC again, so we get the original PC, 
+        // we left it incremented above to avoid assumptions about arm_lduw_code
+        // not accessing the PC and expecting it to be incremented already
+        dc->pc -= 2;
+        uint64_t pc64 = dc->pc;
+        fault_injection_hook(env, &pc64, &insn, FI_INSTRUCTION_VALUE_THUMB32, -1);
         dc->pc += 2;
+        // CF FIES END
+
+        dc->pc += 2;
+    }
+    //CF: FIES new feature
+    else {
+        uint64_t pc64 = dc->pc;
+        fault_injection_hook(env, &pc64, &insn, FI_INSTRUCTION_VALUE_THUMB16, -1);
+        
+        dc->pc += 2;
+        
     }
     dc->insn = insn;
 
@@ -12293,6 +12367,16 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     }
 
     arm_post_translate_insn(dc);
+    
+    // CF FIES
+    {
+    TCGv_i32 tcg_pc = tcg_const_i32(dc->pc);
+    TCGv_i32 tcg_type = tcg_const_i32(is_16bit? FI_PC_THUMB32: FI_PC_THUMB16);
+    gen_helper_fault_controller_call_pc(cpu_env, tcg_pc, tcg_type);
+    tcg_temp_free_i32(tcg_pc);
+    tcg_temp_free_i32(tcg_pc);
+    }
+    // CF FIES END
 
     /* Thumb is a variable-length ISA.  Stop translation when the next insn
      * will touch a new page.  This ensures that prefetch aborts occur at

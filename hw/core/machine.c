@@ -568,7 +568,19 @@ static void machine_class_init(ObjectClass *oc, void *data)
         machine_get_usb, machine_set_usb, &error_abort);
     object_class_property_set_description(oc, "usb",
         "Set on/off to enable/disable usb", &error_abort);
-
+// CF FIES
+// TODO CF maybe add this here:
+/*
+            .name = "fi",
+            .type = QEMU_OPT_BOOL,
+            .help = "Set on/off to enable/disable fault injection",
+        },{
+			.name = "profile",
+            .type = QEMU_OPT_BOOL,
+            .help = "Profile memory/register usage of binary",
+		},{	
+			*/
+// CF FIES END
     object_class_property_add_bool(oc, "graphics",
         machine_get_graphics, machine_set_graphics, &error_abort);
     object_class_property_set_description(oc, "graphics",

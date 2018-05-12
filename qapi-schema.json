@@ -183,6 +183,71 @@
 { 'command': 'query-version', 'returns': 'VersionInfo' }
 
 ##
+# @FaultTypeParams:
+#
+# A description of the fault params.
+#
+# @mask:   			defines bits, which should be changed
+#
+# @address: 		the address of the bit, which should be changed
+#
+# @cf_address:      coupling addrsss for coupling faults
+#
+# @instruction:   	defines the address of the replaced instruction
+#
+# @set_bit:         mask to select if bits defined in <mask> should be set (e.g. 0x1 for SAF-1) or resetted (e.g. 0x0 for SAF-0). Aggressor-bit mask for intercoupling faults.
+#
+# Since: 1.7.0
+##
+{ 'struct': 'FaultTypeParams',
+  'data': {'mask': 'int', 
+	       'address': 'int', 
+	       'cf_address': 'int', 
+	       'instruction': 'int', 
+	       'set_bit': 'int'} }
+
+##
+# @FaultInfo:
+#
+# A description of the faults.
+#
+# @component:   			defines the component, where a fault should be injected
+#
+# @mode:   					defines which fault should be injected
+#
+# @target:   				defines the target point
+#
+# @type:   					defines if the fault is permanent, transient or intermittend
+#
+# @is_active:   			shows if the fault is currently active
+#
+# Since: 1.7.0
+##
+{ 'struct': 'FaultInfo',
+  'data': {'params': 'FaultTypeParams',
+           'component': 'str',
+           'mode': 'str', 
+           'target': 'str',
+           'type': 'str',
+           'duration': 'str',
+           'interval': 'str',
+           'id': 'int',
+           'trigger': 'str',
+           'timer': 'str',
+           'is_active': 'int'} }
+
+##
+# @query-faults:
+#
+# Returns the fault informations.
+#
+# Returns:  A @FaultInfoList object describing the injected faults.
+#
+# Since: 1.7.0
+##
+{ 'command': 'query-faults', 'returns': ['FaultInfo'] }
+
+##
 # @CommandInfo:
 #
 # Information about a QMP command
@@ -263,7 +328,7 @@
 #       protocol
 #
 # Returns: nothing on success.
-#
+# 'io_range': 'PciMemoryRange',
 # Since: 0.14.0
 #
 # Example:

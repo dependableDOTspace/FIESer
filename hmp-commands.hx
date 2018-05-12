@@ -417,6 +417,20 @@ Resume emulation.
 ETEXI
 
     {
+        .name       = "fault_reload",
+        .args_type  = "filename:s",
+        .params     = "file",
+        .help       = "load the config file",
+        .cmd        = hmp_fault_reload,
+    },
+
+STEXI
+@item fault_reload @var{file}
+@findex fault_reload
+load the config file from @var{file}.
+ETEXI
+
+    {
         .name       = "system_wakeup",
         .args_type  = "",
         .params     = "",

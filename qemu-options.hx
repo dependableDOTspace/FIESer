@@ -19,6 +19,22 @@ STEXI
 Display help and exit
 ETEXI
 
+DEF("fi", HAS_ARG, QEMU_OPTION_fi,
+    "-fi     activates the fault injection experiment\n", QEMU_ARCH_ALL)
+STEXI
+@item -fi @var{item1}[,...]
+@findex -fi
+Activates the fault injection experiment
+ETEXI
+
+DEF("profiling", HAS_ARG, QEMU_OPTION_profiling,
+    "-profiling  activates profiling of memory/register usage of the binary\n", QEMU_ARCH_ALL)
+STEXI
+@item -profiling @var{item1}[,...]
+@findex -profiling
+Activates profiling of memory/register usage of the binary
+ETEXI
+
 DEF("version", 0, QEMU_OPTION_version,
     "-version        display version information and exit\n", QEMU_ARCH_ALL)
 STEXI

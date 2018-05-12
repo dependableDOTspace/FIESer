@@ -18,6 +18,8 @@
 #include "exec/exec-all.h"
 #include "exec/tb-hash.h"
 
+#include "fault-injection-controller.h"
+
 /* Might cause an exception, so have a longjmp destination ready */
 static inline TranslationBlock *
 tb_lookup__cpu_state(CPUState *cpu, target_ulong *pc, target_ulong *cs_base,
@@ -28,6 +30,9 @@ tb_lookup__cpu_state(CPUState *cpu, target_ulong *pc, target_ulong *cs_base,
     uint32_t hash;
 
     cpu_get_tb_cpu_state(env, pc, cs_base, flags);
+// CF FIES    
+    start_automatic_test_process(env);
+// CF FIES END    
     hash = tb_jmp_cache_hash_func(*pc);
     tb = atomic_rcu_read(&cpu->tb_jmp_cache[hash]);
     if (likely(tb &&

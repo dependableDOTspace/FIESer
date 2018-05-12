@@ -14,12 +14,28 @@ Show various information about the system state.
 ETEXI
 
     {
+        .name       = "faults",
+        .args_type  = "",
+        .params     = "",
+        .help       = "show all injected fault",
+        .cmd        = hmp_info_faults,
+    },
+
+
+STEXI
+@item info faults
+@findex info faults
+Show all injected faults.
+ETEXI
+
+    {
         .name       = "version",
         .args_type  = "",
         .params     = "",
         .help       = "show the version of QEMU",
         .cmd        = hmp_info_version,
     },
+
 
 STEXI
 @item info version

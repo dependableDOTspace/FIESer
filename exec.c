@@ -69,6 +69,10 @@
 #include "qemu/mmap-alloc.h"
 #endif
 
+//CF FIES
+#include "fault-injection-controller.h"
+//CF FIES END
+
 #include "monitor/monitor.h"
 
 //#define DEBUG_SUBPAGE
@@ -3069,6 +3073,21 @@ MemTxResult address_space_write(AddressSpace *as, hwaddr addr,
     return flatview_write(address_space_to_flatview(as), addr, attrs, buf, len);
 }
 
+// CF FIES	
+// CF Dirty fix: this had been moved entirely to exec/memory.h, moved it back to avoid include-chaos
+MemTxResult address_space_read(AddressSpace *as, hwaddr addr,
+                                             MemTxAttrs attrs, uint8_t *buf,
+                                             int len)
+{
+    // CF FIES	
+    MemTxResult temp = flatview_read(address_space_to_flatview(as), addr, attrs, buf, len);
+    fault_injection_hook(NULL, &addr, (uint32_t*)buf, FI_MEMORY_CONTENT, false);
+    return temp;
+    //was: return flatview_read(address_space_to_flatview(as), addr, attrs, buf, len);
+    // CF FIES	
+}
+// CF FIES	
+
 /* Called within RCU critical section.  */
 MemTxResult flatview_read_continue(FlatView *fv, hwaddr addr,
                                    MemTxAttrs attrs, uint8_t *buf,
@@ -3163,6 +3182,9 @@ static MemTxResult flatview_rw(FlatView *fv, hwaddr addr, MemTxAttrs attrs,
                                uint8_t *buf, int len, bool is_write)
 {
     if (is_write) {
+// CF FIES
+        fault_injection_hook(NULL, &addr, (uint32_t*)buf, FI_MEMORY_CONTENT, is_write);
+// CF FIES END
         return flatview_write(fv, addr, attrs, (uint8_t *)buf, len);
     } else {
         return flatview_read(fv, addr, attrs, (uint8_t *)buf, len);

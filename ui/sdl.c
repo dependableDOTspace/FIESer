@@ -376,11 +376,11 @@ static void sdl_update_caption(void)
     }
 
     if (qemu_name) {
-        snprintf(win_title, sizeof(win_title), "QEMU (%s)%s", qemu_name, status);
-        snprintf(icon_title, sizeof(icon_title), "QEMU (%s)", qemu_name);
+        snprintf(win_title, sizeof(win_title), "CF/FIES (%s)%s", qemu_name, status);
+        snprintf(icon_title, sizeof(icon_title), "CF/FIES (%s)", qemu_name);
     } else {
-        snprintf(win_title, sizeof(win_title), "QEMU%s", status);
-        snprintf(icon_title, sizeof(icon_title), "QEMU");
+        snprintf(win_title, sizeof(win_title), "CF/FIES%s", status);
+        snprintf(icon_title, sizeof(icon_title), "CF/FIES");
     }
 
     SDL_WM_SetCaption(win_title, icon_title);

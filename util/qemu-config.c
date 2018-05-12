@@ -208,6 +208,16 @@ static QemuOptsList machine_opts = {
             .type = QEMU_OPT_BOOL,
             .help = "Set on/off to enable/disable usb",
         },{
+// CF FIES
+            .name = "fi",
+            .type = QEMU_OPT_BOOL,
+            .help = "Set on/off to enable/disable fault injection",
+        },{
+			.name = "profile",
+            .type = QEMU_OPT_BOOL,
+            .help = "Profile memory/register usage of binary",
+		},{	
+// CF FIES END
             .name = "firmware",
             .type = QEMU_OPT_STRING,
             .help = "firmware image",
