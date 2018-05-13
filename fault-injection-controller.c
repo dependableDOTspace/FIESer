@@ -1089,7 +1089,7 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
 {
     FaultList *fault;
     int element = 0;
-    unsigned int insn=0;
+    uint32_t insn=0;
 
     //printf("---------------------------HARTL------------------------------------------\n");
     //printf("instruction number before fault injection: 0x%08x\n", (unsigned int)*addr);
@@ -1152,35 +1152,47 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
         }
         else if (!strcmp(fault->component, "CPU") && !strcmp(fault->target, "INSTRUCTION EXECUTION"))
         {
-//printf("HARTL 4 enter INSTRUCTION EXECUTION");
             if (strcmp(fault->mode, "NEW VALUE"))
             {
-                fprintf(stderr, "error: only mode=\"NEW VALUE\" supported (fault id: %d)\n", fault->id);
+                fprintf(stderr, "error: only mode=\"NEW VALUE\" supported (injecting hardcoded ARM/Thumb NOPs) (fault id: %d)\n", fault->id);
                 continue;
             }
 
-            if (fault->params.address == -1 || fault->params.instruction != 0xDEADBEEF)
+            if (fault->params.address == -1)
             {
-                fprintf(stderr, "error: address or instruction (NOP = 0xDEADBEEF) "
-                        "for access-triggered faults not defined (fault id: %d)\n", fault->id);
+                fprintf(stderr, "error: PC address for access-triggered faults not defined (fault id: %d)\n", fault->id);
                 continue;
             }
 
             fault_injection_check_fault_trigger(fault, "cpu", 0);
             if (!fault->was_triggered)
                 continue;
-
-            /**
-             * different data types sizes - cast will crash the system!
-             */
-            insn = (unsigned long)*addr;
-            /**
-             * the instruction number 0xE1A08008 defines a
-             * MOV R8, R8 is assembler syntax and defines a
-             * NOP-operation, which simulates a "no execution"
-             */
-            do_inject_insn(&insn, 0xE1A08008);
-            *addr = insn;
+            
+            switch (injection_mode){
+                case FI_INSTRUCTION_VALUE_ARM:
+                    /**
+                     * No operation (ARM mode) "MOV r8, r8" - 0xe1a08008
+                     *  is assembler syntax and defines a
+                     * NOP-operation, which simulates a "no execution"
+                     */
+                    do_inject_insn(&insn, 0xe1a08008);
+                    break;
+                    
+                    /**
+                     * No operation (Thumb mode) "MOV r8, r8" - 0x46c0
+                     * replaced 32bit instructions need two 16-bit NOPs
+                     */
+                case FI_INSTRUCTION_VALUE_THUMB32:
+                    insn|=(0x46c0 << 16);
+                case FI_INSTRUCTION_VALUE_THUMB16:
+                    insn|=0x46c0;
+                    do_inject_insn(&insn, insn);
+                    break;
+                default:
+                    assert(0);
+                    break;
+            }
+            *ins = (uint32_t) insn;
         }
 
 #if defined(DEBUG_FAULT_CONTROLLER)
