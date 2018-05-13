@@ -1105,9 +1105,10 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
          * accessed address is not the defined fault address or the trigger is set to
          * time- or pc-triggering.
          */
-        profiler_debuglog("%08x  == %08x\n", fault->params.address, *addr);
-        if ( fault->params.address != *addr || strcmp(fault->trigger, "ACCESS") )
+        profiler_debuglog("%s %08x  == %08x\n", __func__, fault->params.address, *addr);
+        if ( fault->params.address != *addr || strcmp(fault->trigger, "ACCESS")) 
             continue;
+        profiler_debuglog("%s OK!\n", __func__);
 
 //printf("---------------------------HARTL3------------------------------------------\n");
 
@@ -1138,7 +1139,6 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
                 continue;
             }
 
-            profiler_debuglog("OK!\n");
             fault_injection_check_fault_trigger(fault, "cpu", (unsigned int) *addr);
             if (!fault->was_triggered)
                 continue;
@@ -1146,9 +1146,8 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
             /**
              * different data types sizes - cast will crash the system!
              */
-            profiler_debuglog("OK!\n");
             do_inject_insn(&insn, fault->params.instruction);
-            *ins = insn;
+            *ins = (uint32_t) insn;
 
         }
         else if (!strcmp(fault->component, "CPU") && !strcmp(fault->target, "INSTRUCTION EXECUTION"))
@@ -1256,7 +1255,7 @@ static void fault_injection_controller_time(CPUArchState *env,
                 continue;
             }
             
-            profiler_debuglog(" got PC = %08x\nExpected Next PC = %08x", pc-4, pc);
+            profiler_debuglog("%s got PC = %08x\nExpected Next PC = %08x", __func__, pc-4, pc);
 
             fault_injection_check_fault_trigger(fault, "cpu", pc);
             if (!fault->was_triggered){
