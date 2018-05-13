@@ -24,38 +24,36 @@
  * faults) or fromtb_find_fast-function for time-triggered
  * faults.
  */
-typedef enum
-{
-	FI_MEMORY_ADDR,
-	FI_MEMORY_CONTENT,
-	FI_REGISTER_ADDR,
-	FI_REGISTER_CONTENT,
-        FI_INSTRUCTION_VALUE_ARM,
-        FI_INSTRUCTION_VALUE_THUMB32,
-        FI_INSTRUCTION_VALUE_THUMB16,
-        FI_PC_ARM,
-        FI_PC_THUMB32,
-        FI_PC_THUMB16,
-        FI_TIME
-}InjectionMode;
+typedef enum {
+    FI_MEMORY_ADDR,
+    FI_MEMORY_CONTENT,
+    FI_REGISTER_ADDR,
+    FI_REGISTER_CONTENT,
+    FI_INSTRUCTION_VALUE_ARM,
+    FI_INSTRUCTION_VALUE_THUMB32,
+    FI_INSTRUCTION_VALUE_THUMB16,
+    FI_PC_ARM,
+    FI_PC_THUMB32,
+    FI_PC_THUMB16,
+    FI_TIME
+} InjectionMode;
 
 /**
  * The declaration of the AccessType, which specifies
  * a read-, write- or execution-access
  */
-typedef enum
-{
-	read_access_type,
-	write_access_type,
-	exec_access_type,
-}AccessType;
+typedef enum {
+    read_access_type,
+    write_access_type,
+    exec_access_type,
+} AccessType;
 
 /**
  * see corresponding c-file for documentation
  */
 void fault_injection_hook(CPUArchState *env, hwaddr *addr,
-												uint32_t *value, InjectionMode injection_mode,
-												AccessType access_type);
+        uint32_t *value, InjectionMode injection_mode,
+        AccessType access_type);
 int64_t fault_injection_controller_getTimer(void);
 void fault_injection_controller_initTimer(void);
 void init_ops_on_cell(int size);

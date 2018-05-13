@@ -71,7 +71,7 @@ typedef enum
     OPs_0w1,
     OPs_1w0,
     OPs_1w1,
-}CellOps;
+} CellOps;
 
 /**
  * Allocates and initializes the ops_on_memory_cell- and
@@ -83,13 +83,13 @@ void init_ops_on_cell(int ids)
 {
     int i = 0, j = 0;
 
-    ops_on_memory_cell = malloc(ids * sizeof(int *));
-    ops_on_register_cell = malloc(ids * sizeof(int *));
+    ops_on_memory_cell = malloc(ids * sizeof (int *));
+    ops_on_register_cell = malloc(ids * sizeof (int *));
 
     for (i = 0; i < ids; i++)
     {
-        ops_on_memory_cell[i] = malloc(MEMORY_WIDTH * sizeof(int *));
-        ops_on_register_cell[i] = malloc(MEMORY_WIDTH * sizeof(int *));
+        ops_on_memory_cell[i] = malloc(MEMORY_WIDTH * sizeof (int *));
+        ops_on_register_cell[i] = malloc(MEMORY_WIDTH * sizeof (int *));
     }
 
     for (i = 0; i < ids; i++)
@@ -111,7 +111,7 @@ void destroy_ops_on_cell(void)
 {
     int i = 0;
 
-    for(i = 0; i < getMaxIDInFaultList(); i++)
+    for (i = 0; i < getMaxIDInFaultList(); i++)
     {
         free(ops_on_memory_cell[i]);
         free(ops_on_register_cell[i]);
@@ -131,9 +131,9 @@ void destroy_ops_on_cell(void)
 static uint32_t read_cpu_register(CPUArchState *env, hwaddr regno)
 {
 #if defined(TARGET_ARM)
-    return ((CPUARMState *)env)->regs[(int)regno];
+    return ((CPUARMState *) env)->regs[(int) regno];
 #else
-    #error unsupported target CPU
+#error unsupported target CPU
 #endif
 }
 
@@ -149,7 +149,7 @@ int ends_with(const char *string, const char *ending)
     int string_len = strlen(string);
     int ending_len = strlen(ending);
 
-    if ( ending_len > string_len)
+    if (ending_len > string_len)
         return 0;
 
     return !strcmp(&string[string_len - ending_len], ending);
@@ -165,13 +165,13 @@ int ends_with(const char *string, const char *ending)
 int timer_to_int(const char *string)
 {
     int string_len = strlen(string);
-    char timer_string[string_len-1];
+    char timer_string[string_len - 1];
 
-    if ( string_len < 3)
+    if (string_len < 3)
         return 0;
 
-    memset(timer_string, '\0', sizeof(timer_string));
-    strncpy(timer_string, string, string_len-2);
+    memset(timer_string, '\0', sizeof (timer_string));
+    strncpy(timer_string, string, string_len - 2);
 
     return (int) strtol(timer_string, NULL, 10);
 }
@@ -208,10 +208,10 @@ void fault_injection_controller_initTimer(void)
  *                                   case of no usage).
  */
 static void time_normalization(FaultList *fault, int64_t *start_time,
-                                                        int64_t *stop_time, int64_t *interval)
+                               int64_t *stop_time, int64_t *interval)
 {
     *start_time = (int64_t) timer_to_int(fault->timer);
-    *stop_time =  (int64_t) timer_to_int(fault->duration);
+    *stop_time = (int64_t) timer_to_int(fault->duration);
 
     if (interval != NULL)
         *interval = (int64_t) timer_to_int(fault->interval);
@@ -219,23 +219,23 @@ static void time_normalization(FaultList *fault, int64_t *start_time,
     if (fault->timer && ends_with(fault->timer, "MS"))
     {
         *start_time *= SCALE_MS;
-        *stop_time *=  SCALE_MS;
+        *stop_time *= SCALE_MS;
         if (interval != 0)
-            *interval *=  SCALE_MS;
+            *interval *= SCALE_MS;
     }
     else if (fault->timer && ends_with(fault->timer, "US"))
     {
         *start_time *= SCALE_US;
         *stop_time *= SCALE_US;
         if (interval != 0)
-            *interval *=  SCALE_MS;
+            *interval *= SCALE_MS;
     }
     else if (fault->timer && ends_with(fault->timer, "NS"))
     {
         *start_time *= SCALE_NS;
         *stop_time *= SCALE_NS;
         if (interval != 0)
-            *interval *=  SCALE_MS;
+            *interval *= SCALE_MS;
     }
     else
     {
@@ -257,8 +257,8 @@ static void time_normalization(FaultList *fault, int64_t *start_time,
  *                          (could be zero in case of no usage).
  */
 static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
-                                                                        FaultList *fault, FaultInjectionInfo fi_info,
-                                                                        uint32_t pc)
+                                           FaultList *fault, FaultInjectionInfo fi_info,
+                                           uint32_t pc)
 {
     int64_t current_timer_value = 0, start_time = 0, stop_time = 0;
     int64_t interval = 0;
@@ -283,12 +283,12 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
                 /**
                  * toggle the bit off
                  */
-                mask ^= set_bit ;
+                mask ^= set_bit;
 
                 /**
                  * determine the position of the set bit
                  */
-                fi_info.injected_bit =  log2(set_bit);
+                fi_info.injected_bit = log2(set_bit);
                 do_inject_memory_register(env, addr, fi_info);
 
                 if (fi_info.fault_on_register)
@@ -309,7 +309,7 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
 
         current_timer_value = fault_injection_controller_getTimer();
         if (current_timer_value > start_time
-            && current_timer_value < stop_time)
+                && current_timer_value < stop_time)
         {
             /**
              * search the set bits in mask (integer)
@@ -324,12 +324,12 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
                 /**
                  * toggle the bit off
                  */
-                mask ^= set_bit ;
+                mask ^= set_bit;
 
                 /**
                  * determine the position of the set bit
                  */
-                fi_info.injected_bit =  log2(set_bit);
+                fi_info.injected_bit = log2(set_bit);
                 do_inject_memory_register(env, addr, fi_info);
 
                 if (fi_info.fault_on_register)
@@ -350,12 +350,12 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
 
         current_timer_value = fault_injection_controller_getTimer();
         if (current_timer_value > start_time
-            && current_timer_value < stop_time
-            && (current_timer_value / interval) % 2 == 0 )
+                && current_timer_value < stop_time
+                && (current_timer_value / interval) % 2 == 0)
         {
-                /**
-                 * search the set bits in mask (integer)
-                 */
+            /**
+             * search the set bits in mask (integer)
+             */
             while (mask)
             {
                 /**
@@ -366,12 +366,12 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
                 /**
                  * toggle the bit off
                  */
-                mask ^= set_bit ;
+                mask ^= set_bit;
 
                 /**
                  * determine the position of the set bit
                  */
-                fi_info.injected_bit =  log2(set_bit);
+                fi_info.injected_bit = log2(set_bit);
                 do_inject_memory_register(env, addr, fi_info);
 
                 if (fi_info.fault_on_register)
@@ -401,12 +401,12 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
             /**
              * toggle the bit off
              */
-            mask ^= set_bit ;
+            mask ^= set_bit;
 
             /**
              * determine the position of the set bit
              */
-            fi_info.injected_bit =  log2(set_bit);
+            fi_info.injected_bit = log2(set_bit);
             do_inject_memory_register(env, addr, fi_info);
 
             if (fi_info.fault_on_register)
@@ -431,8 +431,8 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
  * @param[in] pc - pc-value, when a fault should be triggered for pc-triggered faults
  *                          (could be zero in case of no usage).
  */
-static void fault_injection_check_fault_trigger(    FaultList *fault, const char *fault_component,
-                                                                                                unsigned int pc)
+static void fault_injection_check_fault_trigger(FaultList *fault, const char *fault_component,
+                                                unsigned int pc)
 {
     int64_t current_timer_value = 0, start_time = 0, stop_time = 0;
     int64_t interval = 0;
@@ -442,7 +442,7 @@ static void fault_injection_check_fault_trigger(    FaultList *fault, const char
     if ((fault->trigger && !strcmp(fault->trigger, "PC") && (pc == fault->params.address))
             || (fault->trigger && fault->target && (pc == fault->params.address) && !strcmp(fault->trigger, "ACCESS") && (!strcmp(fault->target, "INSTRUCTION DECODER") || !strcmp(fault->target, "INSTRUCTION EXECUTION"))))
     {
-        fault_type = (char*) malloc((str_len + 7) * sizeof(char*));
+        fault_type = (char*) malloc((str_len + 7) * sizeof (char*));
         strcpy(fault_type, fault_component);
         strcat(fault_type, " trans");
         incr_num_injected_faults(fault->id, fault_type);
@@ -454,9 +454,9 @@ static void fault_injection_check_fault_trigger(    FaultList *fault, const char
 
         current_timer_value = fault_injection_controller_getTimer();
         if (current_timer_value > start_time
-            && current_timer_value < stop_time)
+                && current_timer_value < stop_time)
         {
-            fault_type = (char*) malloc((str_len + 7) * sizeof(char*));
+            fault_type = (char*) malloc((str_len + 7) * sizeof (char*));
             strcpy(fault_type, fault_component);
             strcat(fault_type, " trans");
             incr_num_injected_faults(fault->id, fault_type);
@@ -473,10 +473,10 @@ static void fault_injection_check_fault_trigger(    FaultList *fault, const char
 
         current_timer_value = fault_injection_controller_getTimer();
         if (current_timer_value > start_time
-            && current_timer_value < stop_time
-            && (current_timer_value / interval) % 2 == 0 )
+                && current_timer_value < stop_time
+                && (current_timer_value / interval) % 2 == 0)
         {
-            fault_type = (char*) malloc((str_len + 7) * sizeof(char*));
+            fault_type = (char*) malloc((str_len + 7) * sizeof (char*));
             strcpy(fault_type, fault_component);
             strcat(fault_type, " trans");
             incr_num_injected_faults(fault->id, fault_type);
@@ -489,7 +489,7 @@ static void fault_injection_check_fault_trigger(    FaultList *fault, const char
     }
     else if (fault->type && !strcmp(fault->type, "PERMANENT"))
     {
-        fault_type = (char*) malloc((str_len + 6) * sizeof(char*));
+        fault_type = (char*) malloc((str_len + 6) * sizeof (char*));
         strcpy(fault_type, fault_component);
         strcat(fault_type, " perm");
         incr_num_injected_faults(fault->id, fault_type);
@@ -516,8 +516,8 @@ static void fault_injection_check_fault_trigger(    FaultList *fault, const char
  *                          (could be zero in case of no usage).
  */
 static void fault_injection_inject_new_value(CPUArchState *env, hwaddr *addr,
-                                                                                    FaultList *fault, FaultInjectionInfo fi_info,
-                                                                                    uint32_t pc)
+                                             FaultList *fault, FaultInjectionInfo fi_info,
+                                             uint32_t pc)
 {
     int64_t current_timer_value = 0, start_time = 0, stop_time = 0;
     int64_t interval = 0;
@@ -556,7 +556,7 @@ static void fault_injection_inject_new_value(CPUArchState *env, hwaddr *addr,
 
         current_timer_value = fault_injection_controller_getTimer();
         if (current_timer_value > start_time
-            && current_timer_value < stop_time)
+                && current_timer_value < stop_time)
         {
             /**
              * copy the new value, which is stored in the mask-variable of
@@ -585,8 +585,8 @@ static void fault_injection_inject_new_value(CPUArchState *env, hwaddr *addr,
 
         current_timer_value = fault_injection_controller_getTimer();
         if (current_timer_value > start_time
-            && current_timer_value < stop_time
-            && (current_timer_value / interval) % 2 == 0 )
+                && current_timer_value < stop_time
+                && (current_timer_value / interval) % 2 == 0)
         {
             /**
              * copy the new value, which is stored in the mask-variable of
@@ -648,8 +648,8 @@ static void fault_injection_inject_new_value(CPUArchState *env, hwaddr *addr,
  *                          (could be zero in case of no usage).
  */
 static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *addr,
-                                                                        FaultList *fault, FaultInjectionInfo fi_info,
-                                                                        uint32_t pc)
+                                                  FaultList *fault, FaultInjectionInfo fi_info,
+                                                  uint32_t pc)
 {
     int64_t current_timer_value = 0, start_time = 0, stop_time = 0;
     int64_t interval = 0;
@@ -674,12 +674,12 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
                 /**
                  * toggle the bit off
                  */
-                mask ^= set_bit ;
+                mask ^= set_bit;
 
                 /**
                  * determine the position of the set bit
                  */
-                fi_info.injected_bit =  log2(set_bit);
+                fi_info.injected_bit = log2(set_bit);
 
                 /**
                  * copy the information, if a bit should be set or reset, which is stored
@@ -709,7 +709,7 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
 
         current_timer_value = fault_injection_controller_getTimer();
         if (current_timer_value > start_time
-            && current_timer_value < stop_time)
+                && current_timer_value < stop_time)
         {
             /**
              * search the set bits in mask (integer)
@@ -724,12 +724,12 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
                 /**
                  * toggle the bit off
                  */
-                mask ^= set_bit ;
+                mask ^= set_bit;
 
                 /**
                  * determine the position of the set bit
                  */
-                fi_info.injected_bit =  log2(set_bit);
+                fi_info.injected_bit = log2(set_bit);
 
                 /**
                  * copy the information, if a bit should be set or reset, which is stored
@@ -759,8 +759,8 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
 
         current_timer_value = fault_injection_controller_getTimer();
         if (current_timer_value > start_time
-            && current_timer_value < stop_time
-            && (current_timer_value / interval) % 2 == 0 )
+                && current_timer_value < stop_time
+                && (current_timer_value / interval) % 2 == 0)
         {
             /**
              * search the set bits in mask (integer)
@@ -775,12 +775,12 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
                 /**
                  * toggle the bit off
                  */
-                mask ^= set_bit ;
+                mask ^= set_bit;
 
                 /**
                  * determine the position of the set bit
                  */
-                fi_info.injected_bit =  log2(set_bit);
+                fi_info.injected_bit = log2(set_bit);
 
                 /**
                  * copy the information, if a bit should be set or reset, which is stored
@@ -809,11 +809,11 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
         /* search the set bits in mask (integer) */
         while (mask)
         {
-            set_bit = mask & -mask;  // extract least significant bit of 2s complement
-            mask ^= set_bit ;  // toggle the bit off
+            set_bit = mask & -mask; // extract least significant bit of 2s complement
+            mask ^= set_bit; // toggle the bit off
 
-            fi_info.injected_bit =  (uint32_t) log2(set_bit); // determine the position of the set bit
-            fi_info.bit_value =  !!(fault->params.set_bit & set_bit); // determine if bit should be set or reset
+            fi_info.injected_bit = (uint32_t) log2(set_bit); // determine the position of the set bit
+            fi_info.bit_value = !!(fault->params.set_bit & set_bit); // determine if bit should be set or reset
             do_inject_memory_register(env, addr, fi_info);
 
             if (fi_info.fault_on_register)
@@ -847,18 +847,18 @@ static void fault_injection_controller_memory_address(CPUArchState *env, hwaddr 
     {
         fault = getFaultListElement(element);
 
-        #if defined(DEBUG_FAULT_CONTROLLER_TLB_FLUSH)
-            printf("flushing tlb address %x\n", (int)*addr);
-        #endif
-        tlb_flush_page(CPU(cpu), (target_ulong)*addr);
+#if defined(DEBUG_FAULT_CONTROLLER_TLB_FLUSH)
+        printf("flushing tlb address %x\n", (int) *addr);
+#endif
+        tlb_flush_page(CPU(cpu), (target_ulong) * addr);
 
-        
+
 
         /*
          * accessed address is not the defined fault address or the trigger is set to
          * time- or pc-triggering.
          */
-        if ( fault->params.address != (int)*addr || strcmp(fault->trigger, "ACCESS") )
+        if (fault->params.address != (int) *addr || strcmp(fault->trigger, "ACCESS"))
             continue;
 
         if (!strcmp(fault->component, "RAM") && !strcmp(fault->target, "ADDRESS DECODER"))
@@ -873,7 +873,7 @@ static void fault_injection_controller_memory_address(CPUArchState *env, hwaddr 
             fi_info.fault_on_register = 0;
 
 #if defined(DEBUG_FAULT_CONTROLLER)
-    printf("memory address before: 0x%08x\n", (uint32_t) *addr);
+            printf("memory address before: 0x%08x\n", (uint32_t) * addr);
 #endif
 
             if (!strcmp(fault->mode, "BIT-FLIP"))
@@ -884,12 +884,12 @@ static void fault_injection_controller_memory_address(CPUArchState *env, hwaddr 
                 fault_injection_inject_state_register(env, addr, fault, fi_info, 0);
 
 #if defined(DEBUG_FAULT_CONTROLLER)
-    printf("memory address after: 0x%08x\n", (uint32_t) *addr);
+            printf("memory address after: 0x%08x\n", (uint32_t) * addr);
 #endif
         }
 
-//      tlb_flush_page(env, (target_ulong)fault->params.address);
-//      tlb_flush_page(env, (target_ulong)fault->params.cf_address);
+        //      tlb_flush_page(env, (target_ulong)fault->params.address);
+        //      tlb_flush_page(env, (target_ulong)fault->params.cf_address);
     }
 }
 
@@ -904,7 +904,7 @@ static void fault_injection_controller_memory_address(CPUArchState *env, hwaddr 
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
 static void log_cell_operations_memory(CPUArchState *env, FaultList *fault, hwaddr *addr,
-                                                                        uint32_t *value, AccessType access_type)
+                                       uint32_t *value, AccessType access_type)
 {
     unsigned memword = 0, mask = 0, set_bit, bit_pos = 0, id = 0;
 
@@ -913,7 +913,7 @@ static void log_cell_operations_memory(CPUArchState *env, FaultList *fault, hwad
      */
     if (access_type == write_access_type)
     {
-        uint8_t *membytes = (uint8_t *)&memword;
+        uint8_t *membytes = (uint8_t *) & memword;
         CPUState *cpu = ENV_GET_CPU(env);
         cpu_memory_rw_debug(cpu, *addr, membytes, (MEMORY_WIDTH / 8), 0);
 
@@ -932,7 +932,7 @@ static void log_cell_operations_memory(CPUArchState *env, FaultList *fault, hwad
             /**
              * toggle the bit off
              */
-            mask ^= set_bit ;
+            mask ^= set_bit;
 
             /**
              * determine the position of the set bit
@@ -965,7 +965,7 @@ static void log_cell_operations_memory(CPUArchState *env, FaultList *fault, hwad
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
 static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr *addr,
-                                                                                    uint32_t *value, AccessType access_type)
+                                                      uint32_t *value, AccessType access_type)
 {
     FaultList *fault;
     int element = 0;
@@ -975,23 +975,23 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
     for (element = 0; element < getNumFaultListElements(); element++)
     {
         fault = getFaultListElement(element);
-    
+
 
         /*
          * accessed address is not the defined fault address or the trigger is set to
          * time- or pc-triggering.
          */
-        if ( fault->params.address != (int)*addr
-            || !strcmp(fault->trigger, "TIME")
-            || !strcmp(fault->trigger, "PC"))
+        if (fault->params.address != (int) *addr
+                || !strcmp(fault->trigger, "TIME")
+                || !strcmp(fault->trigger, "PC"))
         {
             continue;
         }
 
-        #if defined(DEBUG_FAULT_CONTROLLER_TLB_FLUSH)
-            printf("flushing tlb address %x\n", (int)*addr);
-        #endif
-        tlb_flush_page(CPU(cpu), (target_ulong)*addr);
+#if defined(DEBUG_FAULT_CONTROLLER_TLB_FLUSH)
+        printf("flushing tlb address %x\n", (int) *addr);
+#endif
+        tlb_flush_page(CPU(cpu), (target_ulong) * addr);
 
         /*
          * strcmp does not check a null-pointer - system will crash
@@ -1001,10 +1001,10 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
             continue;
 
         if (!strcmp(fault->component, "RAM")
-            && (!strcmp(fault->target, "MEMORY CELL") || !strcmp(fault->target, "R/W LOGIC")))
+                && (!strcmp(fault->target, "MEMORY CELL") || !strcmp(fault->target, "R/W LOGIC")))
         {
 #if defined(DEBUG_FAULT_CONTROLLER)
-            printf("FAULT INJECTED TRIGGERED TO %x with addr %x \n",(int)*addr, fault->params.address);
+            printf("FAULT INJECTED TRIGGERED TO %x with addr %x \n", (int) *addr, fault->params.address);
 #endif
             /* set/reset values */
             fi_info.new_value = 0;
@@ -1032,7 +1032,7 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
             else if (!strcmp(fault->mode, "NEW VALUE"))
             {
                 uint64_t value64 = *value;
-                fault_injection_inject_new_value(env,  &value64, fault, fi_info, 0);
+                fault_injection_inject_new_value(env, &value64, fault, fi_info, 0);
                 *value = value64;
             }
             else if (!strcmp(fault->mode, "SF"))
@@ -1048,7 +1048,7 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
             }
 #if defined(DEBUG_FAULT_CONTROLLER)
             unsigned memword = 0;
-            uint8_t *membytes = (uint8_t *)&memword;
+            uint8_t *membytes = (uint8_t *) & memword;
             CPUState *cpu = ENV_GET_CPU(env);
 
             if (fault->params.cf_address != -1)
@@ -1071,9 +1071,9 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
         {
             continue;
         }
-//
-//      tlb_flush_page(env, (target_ulong)fault->params.address);
-//      tlb_flush_page(env, (target_ulong)fault->params.cf_address);
+        //
+        //      tlb_flush_page(env, (target_ulong)fault->params.address);
+        //      tlb_flush_page(env, (target_ulong)fault->params.cf_address);
     }
 }
 
@@ -1089,7 +1089,7 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
 {
     FaultList *fault;
     int element = 0;
-    uint32_t insn=0;
+    uint32_t insn = 0;
 
     //printf("---------------------------HARTL------------------------------------------\n");
     //printf("instruction number before fault injection: 0x%08x\n", (unsigned int)*addr);
@@ -1106,11 +1106,11 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
          * time- or pc-triggering.
          */
         profiler_debuglog("%s %08x  == %08x\n", __func__, fault->params.address, *addr);
-        if ( fault->params.address != *addr || strcmp(fault->trigger, "ACCESS")) 
+        if (fault->params.address != *addr || strcmp(fault->trigger, "ACCESS"))
             continue;
         profiler_debuglog("%s OK!\n", __func__);
 
-//printf("---------------------------HARTL3------------------------------------------\n");
+        //printf("---------------------------HARTL3------------------------------------------\n");
 
 
         /**
@@ -1121,8 +1121,8 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
             continue;
 
 #if defined(DEBUG_FAULT_CONTROLLER)
-            printf("---------------------------START------------------------------------------\n");
-            printf("instruction number before fault injection: 0x%08x\n", (unsigned int)*addr);
+        printf("---------------------------START------------------------------------------\n");
+        printf("instruction number before fault injection: 0x%08x\n", (unsigned int) *addr);
 #endif
 
         if (!strcmp(fault->component, "CPU") && !strcmp(fault->target, "INSTRUCTION DECODER"))
@@ -1167,37 +1167,38 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
             fault_injection_check_fault_trigger(fault, "cpu", 0);
             if (!fault->was_triggered)
                 continue;
-            
-            switch (injection_mode){
-                case FI_INSTRUCTION_VALUE_ARM:
-                    /**
-                     * No operation (ARM mode) "MOV r8, r8" - 0xe1a08008
-                     *  is assembler syntax and defines a
-                     * NOP-operation, which simulates a "no execution"
-                     */
-                    do_inject_insn(&insn, 0xe1a08008);
-                    break;
-                    
-                    /**
-                     * No operation (Thumb mode) "MOV r8, r8" - 0x46c0
-                     * replaced 32bit instructions need two 16-bit NOPs
-                     */
-                case FI_INSTRUCTION_VALUE_THUMB32:
-                    insn|=(0x46c0 << 16);
-                case FI_INSTRUCTION_VALUE_THUMB16:
-                    insn|=0x46c0;
-                    do_inject_insn(&insn, insn);
-                    break;
-                default:
-                    assert(0);
-                    break;
+
+            switch (injection_mode)
+            {
+            case FI_INSTRUCTION_VALUE_ARM:
+                /**
+                 * No operation (ARM mode) "MOV r8, r8" - 0xe1a08008
+                 *  is assembler syntax and defines a
+                 * NOP-operation, which simulates a "no execution"
+                 */
+                do_inject_insn(&insn, 0xe1a08008);
+                break;
+
+                /**
+                 * No operation (Thumb mode) "MOV r8, r8" - 0x46c0
+                 * replaced 32bit instructions need two 16-bit NOPs
+                 */
+            case FI_INSTRUCTION_VALUE_THUMB32:
+                insn |= (0x46c0 << 16);
+            case FI_INSTRUCTION_VALUE_THUMB16:
+                insn |= 0x46c0;
+                do_inject_insn(&insn, insn);
+                break;
+            default:
+                assert(0);
+                break;
             }
             *ins = (uint32_t) insn;
         }
 
 #if defined(DEBUG_FAULT_CONTROLLER)
-            printf("instruction number after fault injection: 0x%08x\n", (unsigned int)*addr);
-            printf("---------------------------END--------------------------------------------\n");
+        printf("instruction number after fault injection: 0x%08x\n", (unsigned int) *addr);
+        printf("---------------------------END--------------------------------------------\n");
 #endif
     }
 }
@@ -1208,16 +1209,16 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
  *
  * @param[in] env - Reference to the information of the CPU state.
  * @param[in] addr - the instruction number.
-* @param[in] access_type - if the access-operation is a write, read or execute.
+ * @param[in] access_type - if the access-operation is a write, read or execute.
  */
-static void fault_injection_controller_time(CPUArchState *env, 
-                                            hwaddr *addr, 
-                                            InjectionMode injection_mode, 
+static void fault_injection_controller_time(CPUArchState *env,
+                                            hwaddr *addr,
+                                            InjectionMode injection_mode,
                                             int access_type)
 {
     FaultList *fault;
     int element = 0;
-    unsigned int pc = (unsigned long)*addr;
+    unsigned int pc = (unsigned long) *addr;
     hwaddr reg_mem_addr = 0;
     FaultInjectionInfo fi_info = {0, 0, 0, 0, 0, 0, 0};
 
@@ -1238,10 +1239,10 @@ static void fault_injection_controller_time(CPUArchState *env,
         if (!fault->component || !fault->target || !fault->mode)
             continue;
 
-    #if defined(DEBUG_FAULT_CONTROLLER)
+#if defined(DEBUG_FAULT_CONTROLLER)
         printf("---------------------------START------------------------------------------\n");
-        printf("pc before fault injection: 0x%08x\n", (unsigned int)*addr);
-    #endif
+        printf("pc before fault injection: 0x%08x\n", (unsigned int) *addr);
+#endif
 
         if (!strcmp(fault->component, "CPU") && !strcmp(fault->target, "CONDITION FLAGS"))
         {
@@ -1253,7 +1254,7 @@ static void fault_injection_controller_time(CPUArchState *env,
             do_inject_condition_flags(env, fault->mode, fault->params.set_bit);
         }
         else if (!strcmp(fault->component, "CPU") && (!strcmp(fault->target, "INSTRUCTION DECODER")
-                                                                            || !strcmp(fault->target, "INSTRUCTION EXECUTION")))
+                || !strcmp(fault->target, "INSTRUCTION EXECUTION")))
         {
             if (strcmp(fault->mode, "NEW VALUE"))
             {
@@ -1266,11 +1267,12 @@ static void fault_injection_controller_time(CPUArchState *env,
                 fprintf(stderr, "error: PC- or instruction-address not defined (fault id: %d)\n", fault->id);
                 continue;
             }
-            
-            profiler_debuglog("%s got PC = %08x\nExpected Next PC = %08x", __func__, pc-4, pc);
+
+            profiler_debuglog("%s got PC = %08x\nExpected Next PC = %08x", __func__, pc - 4, pc);
 
             fault_injection_check_fault_trigger(fault, "cpu", pc);
-            if (!fault->was_triggered){
+            if (!fault->was_triggered)
+            {
                 continue;
             }
 
@@ -1279,11 +1281,11 @@ static void fault_injection_controller_time(CPUArchState *env,
              * This is needed, because the pc is not accessed
              * at this time (time- triggering).
              */
-            
-            do_inject_look_up_error(env, fault->params.instruction, (injection_mode == FI_PC_THUMB16)? 2 : 4);
+
+            do_inject_look_up_error(env, fault->params.instruction, (injection_mode == FI_PC_THUMB16) ? 2 : 4);
         }
         else if (!strcmp(fault->component, "REGISTER")
-                    && !strcmp(fault->target, "REGISTER CELL"))
+                && !strcmp(fault->target, "REGISTER CELL"))
         {
             /**
              * overwrites the value in register or memory directly
@@ -1303,11 +1305,11 @@ static void fault_injection_controller_time(CPUArchState *env,
              * variable contains the pc-value.
              */
             reg_mem_addr = fault->params.instruction;
-    #if defined(DEBUG_FAULT_CONTROLLER)
+#if defined(DEBUG_FAULT_CONTROLLER)
             unsigned memword = 0;
             memword = read_cpu_register(env, reg_mem_addr);
             printf("injecting fault on register %d with initial content 0x%08x\n", fault->params.instruction, memword);
-    #endif
+#endif
 
             if (!strcmp(fault->mode, "BIT-FLIP"))
             {
@@ -1329,7 +1331,7 @@ static void fault_injection_controller_time(CPUArchState *env,
 #endif
         }
         else if (!strcmp(fault->component, "RAM")
-            && (!strcmp(fault->target, "MEMORY CELL") || !strcmp(fault->target, "R/W LOGIC")))
+                && (!strcmp(fault->target, "MEMORY CELL") || !strcmp(fault->target, "R/W LOGIC")))
         {
             /**
              * set/reset values
@@ -1341,15 +1343,15 @@ static void fault_injection_controller_time(CPUArchState *env,
             fi_info.fault_on_register = 0;
 
             reg_mem_addr = fault->params.instruction;
-    #if defined(DEBUG_FAULT_CONTROLLER)
+#if defined(DEBUG_FAULT_CONTROLLER)
             unsigned memword = 0;
-            uint8_t *membytes = (uint8_t *)&memword;
+            uint8_t *membytes = (uint8_t *) & memword;
             CPUState *cpu = ENV_GET_CPU(env);
 
             cpu_memory_rw_debug(cpu, reg_mem_addr, membytes, (MEMORY_WIDTH / 8), 0);
             printf("injecting fault on memory cell: 0x%08x with initial content 0x%08x\n",
-                    fault->params.instruction, memword);
-    #endif
+                   fault->params.instruction, memword);
+#endif
 
             if (!strcmp(fault->mode, "BIT-FLIP"))
             {
@@ -1367,16 +1369,16 @@ static void fault_injection_controller_time(CPUArchState *env,
             printf("fault status: %d (1-active, 0-inactive)\n", fault->was_triggered);
 
             memword = 0;
-            membytes = (uint8_t *)&memword;
+            membytes = (uint8_t *) & memword;
 
             cpu_memory_rw_debug(cpu, reg_mem_addr, membytes, (MEMORY_WIDTH / 8), 0);
             printf("cell content after fault injection: 0x%08x\n", memword);
 #endif
         }
-    #if defined(DEBUG_FAULT_CONTROLLER)
-                printf("pc after fault injection: 0x%08x\n", (unsigned int)*addr);
-            printf("---------------------------END--------------------------------------------\n");
-    #endif
+#if defined(DEBUG_FAULT_CONTROLLER)
+        printf("pc after fault injection: 0x%08x\n", (unsigned int) *addr);
+        printf("---------------------------END--------------------------------------------\n");
+#endif
     }
 }
 
@@ -1391,7 +1393,7 @@ static void fault_injection_controller_time(CPUArchState *env,
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
 static void log_cell_operations_register(CPUArchState *env, FaultList *fault, hwaddr *addr,
-                                                                        uint32_t *value, AccessType access_type)
+                                         uint32_t *value, AccessType access_type)
 {
     unsigned memword = 0, mask = 0, set_bit, bit_pos = 0, id = 0;
 
@@ -1416,7 +1418,7 @@ static void log_cell_operations_register(CPUArchState *env, FaultList *fault, hw
             /**
              * toggle the bit off
              */
-            mask ^= set_bit ;
+            mask ^= set_bit;
 
             /**
              * determine the position of the set bit
@@ -1449,7 +1451,7 @@ static void log_cell_operations_register(CPUArchState *env, FaultList *fault, hw
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
 static void fault_injection_controller_register_content(CPUArchState *env, hwaddr *addr,
-                                                                        uint32_t *value, AccessType access_type)
+                                                        uint32_t *value, AccessType access_type)
 {
     FaultList *fault;
     int element = 0;
@@ -1463,9 +1465,9 @@ static void fault_injection_controller_register_content(CPUArchState *env, hwadd
          * accessed address is not the defined fault address or the trigger is set to
          * time- or pc-triggering.
          */
-        if ( fault->params.address != (int)*addr
-            || !strcmp(fault->trigger, "TIME")
-            || !strcmp(fault->trigger, "PC"))
+        if (fault->params.address != (int) *addr
+                || !strcmp(fault->trigger, "TIME")
+                || !strcmp(fault->trigger, "PC"))
         {
             continue;
         }
@@ -1478,7 +1480,7 @@ static void fault_injection_controller_register_content(CPUArchState *env, hwadd
             continue;
 
         if (!strcmp(fault->component, "REGISTER")
-            && !strcmp(fault->target, "REGISTER CELL"))
+                && !strcmp(fault->target, "REGISTER CELL"))
         {
             /**
              *  set/reset values
@@ -1508,7 +1510,7 @@ static void fault_injection_controller_register_content(CPUArchState *env, hwadd
             else if (!strcmp(fault->mode, "NEW VALUE"))
             {
                 uint64_t value64 = *value;
-                fault_injection_inject_new_value(env,  &value64, fault, fi_info, 0);
+                fault_injection_inject_new_value(env, &value64, fault, fi_info, 0);
                 *value = value64;
             }
             else if (!strcmp(fault->mode, "SF"))
@@ -1572,7 +1574,7 @@ static void fault_injection_controller_register_address(CPUArchState *env, hwadd
          * accessed address is not the defined fault address or the trigger is set to
          * time- or pc-triggering.
          */
-        if ( fault->params.address != (int)*addr || strcmp(fault->trigger, "ACCESS") )
+        if (fault->params.address != (int) *addr || strcmp(fault->trigger, "ACCESS"))
             continue;
 
         /**
@@ -1615,7 +1617,7 @@ static void fault_injection_controller_register_address(CPUArchState *env, hwadd
 void start_automatic_test_process(CPUArchState *env)
 {
     static int already_set = 0, shutting_down = 0;
-    
+
     CPUState *cpu;
 
     if (!already_set)
@@ -1636,7 +1638,7 @@ void start_automatic_test_process(CPUArchState *env)
         if (env)
         {
             cpu = ENV_GET_CPU(env);
-            cpu_dump_state(cpu, (FILE *)qemu_serial_monitor, (fprintf_function) monitor_printf, CPU_DUMP_FPU);
+            cpu_dump_state(cpu, (FILE *) qemu_serial_monitor, (fprintf_function) monitor_printf, CPU_DUMP_FPU);
         }
 
         qmp_quit(NULL);
@@ -1654,78 +1656,76 @@ void start_automatic_test_process(CPUArchState *env)
  *
  */
 void fault_injection_hook(CPUArchState *env, hwaddr *addr,
-                                                uint32_t *value, InjectionMode injection_mode,
-                                                AccessType access_type)
+                          uint32_t *value, InjectionMode injection_mode,
+                          AccessType access_type)
 {
     FaultList *fault;
     int element = 0;
     ARMCPU *cpu = arm_env_get_cpu(env);
 
     profiler_log(env, addr, value, access_type);
-    
+
     if (*addr == address_in_use)
         return;
-    
-    switch (injection_mode){
-        case FI_MEMORY_ADDR:
-            fault_injection_controller_memory_address(env, addr);
-            break;
-        case FI_MEMORY_CONTENT:
-            if (env)
-            {
-                fault_injection_controller_memory_content(env, addr, value, access_type);
-                return;
-            }
 
-            /**
-             * get the CPUArchState of the current CPU (if not defined)
-             */
-            if (next_cpu == NULL)
-                next_cpu = first_cpu;
+    switch (injection_mode)
+    {
+    case FI_MEMORY_ADDR:
+        fault_injection_controller_memory_address(env, addr);
+        break;
+    case FI_MEMORY_CONTENT:
+        if (env)
+        {
+            fault_injection_controller_memory_content(env, addr, value, access_type);
+            return;
+        }
 
-            for (; next_cpu != NULL && !(next_cpu->exit_request); next_cpu = CPU_NEXT(next_cpu))
-            {
-                CPUState *cpu = next_cpu;
-                CPUArchState *env = cpu->env_ptr;
+        /**
+         * get the CPUArchState of the current CPU (if not defined)
+         */
+        if (next_cpu == NULL)
+            next_cpu = first_cpu;
 
-                fault_injection_controller_memory_content(env, addr, value, access_type);
-            }
-            break;
-        case FI_INSTRUCTION_VALUE_ARM:
-        case FI_INSTRUCTION_VALUE_THUMB32:
-        case FI_INSTRUCTION_VALUE_THUMB16:
-            fault_injection_controller_insn(env, addr, value, injection_mode);
-            break;
-        case FI_REGISTER_ADDR:
-            fault_injection_controller_register_address(env, addr);
-            break;
-        case FI_REGISTER_CONTENT:
-            fault_injection_controller_register_content(env, addr, value, access_type);
-            break;
-        case FI_TIME:
-        case FI_PC_ARM:
-        case FI_PC_THUMB32:
-        case FI_PC_THUMB16:
-            for (element = 0; element < getNumFaultListElements(); element++)
-            {
-                fault = getFaultListElement(element);
+        for (; next_cpu != NULL && !(next_cpu->exit_request); next_cpu = CPU_NEXT(next_cpu))
+        {
+            CPUState *cpu = next_cpu;
+            CPUArchState *env = cpu->env_ptr;
 
-                #if defined(DEBUG_FAULT_CONTROLLER_TLB_FLUSH)
-                    printf("flushing tlb address %x\n", fault->params.address);
-                #endif
-                tlb_flush_page(CPU(cpu), (target_ulong)fault->params.address);
-                tlb_flush_page(CPU(cpu), (target_ulong)fault->params.cf_address);
-            }
+            fault_injection_controller_memory_content(env, addr, value, access_type);
+        }
+        break;
+    case FI_INSTRUCTION_VALUE_ARM:
+    case FI_INSTRUCTION_VALUE_THUMB32:
+    case FI_INSTRUCTION_VALUE_THUMB16:
+        fault_injection_controller_insn(env, addr, value, injection_mode);
+        break;
+    case FI_REGISTER_ADDR:
+        fault_injection_controller_register_address(env, addr);
+        break;
+    case FI_REGISTER_CONTENT:
+        fault_injection_controller_register_content(env, addr, value, access_type);
+        break;
+    case FI_TIME:
+    case FI_PC_ARM:
+    case FI_PC_THUMB32:
+    case FI_PC_THUMB16:
+        for (element = 0; element < getNumFaultListElements(); element++)
+        {
+            fault = getFaultListElement(element);
 
-            fault_injection_controller_time(env, addr, injection_mode, access_type);
-            break;
-        default:
-            fprintf(stderr, "Unknown fault injection target!\n");
-            
+#if defined(DEBUG_FAULT_CONTROLLER_TLB_FLUSH)
+            printf("flushing tlb address %x\n", fault->params.address);
+#endif
+            tlb_flush_page(CPU(cpu), (target_ulong) fault->params.address);
+            tlb_flush_page(CPU(cpu), (target_ulong) fault->params.cf_address);
+        }
+
+        fault_injection_controller_time(env, addr, injection_mode, access_type);
+        break;
+    default:
+        fprintf(stderr, "Unknown fault injection target!\n");
+        assert(0);
     }
-
-    
-
 }
 
 void setMonitor(Monitor *mon)
