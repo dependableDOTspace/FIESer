@@ -38,6 +38,7 @@
 
 // CF FIES
 #include "../fault-injection-controller.h"
+#include "../fault-injection-profiler.h"
 // CF FIES END
 
 #define ENABLE_ARCH_4T    arm_dc_feature(s, ARM_FEATURE_V4T)
@@ -12217,11 +12218,12 @@ static void arm_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     // CF FIES
     //FIES hook: instruction VALUE at current PC, but NOT the PC! (dc->pc*)
     //printf ("FIES: %s:%d hook instruction VALUE at pc=%x, Op=%x\r\n", __func__, __LINE__, dc->pc, insn);
+    profiler_debuglog("PC = %08x    ARM = %08x\n", dc->pc, insn);
     
-    uint64_t pc64 = dc->pc;
-    fault_injection_hook(env, &pc64, &insn, FI_INSTRUCTION_VALUE_ARM, -1);
+    fault_injection_hook(env, (uint64_t*) &dc->pc, &insn, FI_INSTRUCTION_VALUE_ARM, -1);
     // CF FIES END
     }
+    profiler_debuglog("PC = %08x    ARM = %08x\n", dc->pc, insn);
 
     //disassemble next instruction
     dc->insn = insn;
@@ -12303,7 +12305,7 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     if (arm_pre_translate_insn(dc)) {
         return;
     }
-
+    
     insn = arm_lduw_code(env, dc->pc, dc->sctlr_b);
     is_16bit = thumb_insn_is_16bit(dc, insn);
     if (!is_16bit) {
@@ -12336,6 +12338,8 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
         
     }
     dc->insn = insn;
+    
+    profiler_debuglog("PC = %08x   THUMB = %08x\n", is_16bit? dc->pc-2 : dc->pc-4, insn);
 
     if (dc->condexec_mask && !thumb_insn_is_unconditional(dc, insn)) {
         uint32_t cond = dc->condexec_cond;

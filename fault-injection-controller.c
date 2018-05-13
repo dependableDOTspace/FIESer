@@ -439,7 +439,8 @@ static void fault_injection_check_fault_trigger(    FaultList *fault, const char
     int str_len = strlen(fault_component);
     char* fault_type = NULL;
 
-    if (fault->trigger && !strcmp(fault->trigger, "PC") && (pc == fault->params.address))
+    if ((fault->trigger && !strcmp(fault->trigger, "PC") && (pc == fault->params.address))
+            || (fault->trigger && fault->target && (pc == fault->params.address) && !strcmp(fault->trigger, "ACCESS") && (!strcmp(fault->target, "INSTRUCTION DECODER") || !strcmp(fault->target, "INSTRUCTION EXECUTION"))))
     {
         fault_type = (char*) malloc((str_len + 7) * sizeof(char*));
         strcpy(fault_type, fault_component);
@@ -1084,11 +1085,11 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
  * @param[in] env - Reference to the information of the CPU state.
  * @param[in] addr - the instruction number.
  */
-static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, InjectionMode injection_mode)
+static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uint32_t *ins, InjectionMode injection_mode)
 {
     FaultList *fault;
     int element = 0;
-    unsigned int insn;
+    unsigned int insn=0;
 
     //printf("---------------------------HARTL------------------------------------------\n");
     //printf("instruction number before fault injection: 0x%08x\n", (unsigned int)*addr);
@@ -1104,7 +1105,8 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, Inj
          * accessed address is not the defined fault address or the trigger is set to
          * time- or pc-triggering.
          */
-        if ( fault->params.address != (int)*addr || strcmp(fault->trigger, "ACCESS") )
+        profiler_debuglog("%08x  == %08x\n", fault->params.address, *addr);
+        if ( fault->params.address != *addr || strcmp(fault->trigger, "ACCESS") )
             continue;
 
 //printf("---------------------------HARTL3------------------------------------------\n");
@@ -1136,16 +1138,17 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, Inj
                 continue;
             }
 
-            fault_injection_check_fault_trigger(fault, "cpu", 0);
+            profiler_debuglog("OK!\n");
+            fault_injection_check_fault_trigger(fault, "cpu", (unsigned int) *addr);
             if (!fault->was_triggered)
                 continue;
 
             /**
              * different data types sizes - cast will crash the system!
              */
-            insn = (unsigned int)*addr;
+            profiler_debuglog("OK!\n");
             do_inject_insn(&insn, fault->params.instruction);
-            *addr = insn;
+            *ins = insn;
 
         }
         else if (!strcmp(fault->component, "CPU") && !strcmp(fault->target, "INSTRUCTION EXECUTION"))
@@ -1265,6 +1268,7 @@ static void fault_injection_controller_time(CPUArchState *env,
              * This is needed, because the pc is not accessed
              * at this time (time- triggering).
              */
+            
             do_inject_look_up_error(env, fault->params.instruction, (injection_mode == FI_PC_THUMB16)? 2 : 4);
         }
         else if (!strcmp(fault->component, "REGISTER")
@@ -1650,63 +1654,67 @@ void fault_injection_hook(CPUArchState *env, hwaddr *addr,
     
     if (*addr == address_in_use)
         return;
+    
+    switch (injection_mode){
+        case FI_MEMORY_ADDR:
+            fault_injection_controller_memory_address(env, addr);
+            break;
+        case FI_MEMORY_CONTENT:
+            if (env)
+            {
+                fault_injection_controller_memory_content(env, addr, value, access_type);
+                return;
+            }
 
-    if (injection_mode == FI_MEMORY_ADDR)
-    {
-        fault_injection_controller_memory_address(env, addr);
+            /**
+             * get the CPUArchState of the current CPU (if not defined)
+             */
+            if (next_cpu == NULL)
+                next_cpu = first_cpu;
+
+            for (; next_cpu != NULL && !(next_cpu->exit_request); next_cpu = CPU_NEXT(next_cpu))
+            {
+                CPUState *cpu = next_cpu;
+                CPUArchState *env = cpu->env_ptr;
+
+                fault_injection_controller_memory_content(env, addr, value, access_type);
+            }
+            break;
+        case FI_INSTRUCTION_VALUE_ARM:
+        case FI_INSTRUCTION_VALUE_THUMB32:
+        case FI_INSTRUCTION_VALUE_THUMB16:
+            fault_injection_controller_insn(env, addr, value, injection_mode);
+            break;
+        case FI_REGISTER_ADDR:
+            fault_injection_controller_register_address(env, addr);
+            break;
+        case FI_REGISTER_CONTENT:
+            fault_injection_controller_register_content(env, addr, value, access_type);
+            break;
+        case FI_TIME:
+        case FI_PC_ARM:
+        case FI_PC_THUMB32:
+        case FI_PC_THUMB16:
+            for (element = 0; element < getNumFaultListElements(); element++)
+            {
+                fault = getFaultListElement(element);
+
+                #if defined(DEBUG_FAULT_CONTROLLER_TLB_FLUSH)
+                    printf("flushing tlb address %x\n", fault->params.address);
+                #endif
+                tlb_flush_page(CPU(cpu), (target_ulong)fault->params.address);
+                tlb_flush_page(CPU(cpu), (target_ulong)fault->params.cf_address);
+            }
+
+            fault_injection_controller_time(env, addr, injection_mode, access_type);
+            break;
+        default:
+            fprintf(stderr, "Unknown fault injection target!\n");
+            
     }
-    else if (injection_mode == FI_MEMORY_CONTENT)
-    {
-        if (env)
-        {
-            fault_injection_controller_memory_content(env, addr, value, access_type);
-            return;
-        }
 
-        /**
-         * get the CPUArchState of the current CPU (if not defined)
-         */
-        if (next_cpu == NULL)
-            next_cpu = first_cpu;
+    
 
-        for (; next_cpu != NULL && !(next_cpu->exit_request); next_cpu = CPU_NEXT(next_cpu))
-        {
-            CPUState *cpu = next_cpu;
-            CPUArchState *env = cpu->env_ptr;
-
-            fault_injection_controller_memory_content(env, addr, value, access_type);
-        }
-
-    }
-    else if (injection_mode == FI_INSTRUCTION_VALUE_ARM || FI_INSTRUCTION_VALUE_THUMB32 || FI_INSTRUCTION_VALUE_THUMB16)
-    {
-        fault_injection_controller_insn(env, addr, injection_mode);
-    }
-    else if (injection_mode == FI_REGISTER_ADDR)
-    {
-        fault_injection_controller_register_address(env, addr);
-    }
-    else if (injection_mode == FI_REGISTER_CONTENT)
-    {
-        fault_injection_controller_register_content(env, addr, value, access_type);
-    }
-    else if (injection_mode == FI_TIME || FI_PC_ARM || FI_PC_THUMB32 || FI_PC_THUMB16)
-    {
-        for (element = 0; element < getNumFaultListElements(); element++)
-        {
-            fault = getFaultListElement(element);
-
-            #if defined(DEBUG_FAULT_CONTROLLER_TLB_FLUSH)
-                printf("flushing tlb address %x\n", fault->params.address);
-            #endif
-            tlb_flush_page(CPU(cpu), (target_ulong)fault->params.address);
-            tlb_flush_page(CPU(cpu), (target_ulong)fault->params.cf_address);
-        }
-
-        fault_injection_controller_time(env, addr, injection_mode, access_type);
-    }
-    else
-        fprintf(stderr, "Unknown fault injection target!\n");
 }
 
 void setMonitor(Monitor *mon)
