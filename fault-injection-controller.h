@@ -51,17 +51,17 @@ typedef enum {
 /**
  * see corresponding c-file for documentation
  */
-void fault_injection_hook(CPUArchState *env, hwaddr *addr,
+void FIESER_hook(CPUArchState *env, hwaddr *addr,
         uint32_t *value, InjectionMode injection_mode,
         AccessType access_type);
-int64_t fault_injection_controller_getTimer(void);
-void fault_injection_controller_initTimer(void);
-void init_ops_on_cell(int size);
-void destroy_ops_on_cell(void);
-int ends_with(const char *string, const char *ending);
-int timer_to_int(const char *string);
-void setMonitor(Monitor *mon);
-void start_automatic_test_process(CPUArchState *env);
+int64_t FIESER_timer_get(void);
+void FIESER_timer_init(void);
+void FIESER_helper_init_ops_on_cell(int size);
+void FIESER_helper_destroy_ops_on_cell(void);
+int FIESER_helper_ends_with(const char *string, const char *ending);
+int FIESER_timer_to_int(const char *string);
+void FIESER_setMonitor(Monitor *mon);
+void FIESER_start_automatic_test_process(CPUArchState *env);
 //void fault_reload_arg();
 
 #endif /* FAULT_INJECTION_CONTROLLER_H_ */

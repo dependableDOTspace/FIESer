@@ -79,7 +79,7 @@ typedef enum
  *
  * @param[in] ids - the maximal id number.
  */
-void init_ops_on_cell(int ids)
+void FIESER_helper_init_ops_on_cell(int ids)
 {
     int i = 0, j = 0;
 
@@ -107,7 +107,7 @@ void init_ops_on_cell(int ids)
  * Deletes the ops_on_memory_cell- and
  * ops_on_register_cell-array.
  */
-void destroy_ops_on_cell(void)
+void FIESER_helper_destroy_ops_on_cell(void)
 {
     int i = 0;
 
@@ -128,7 +128,7 @@ void destroy_ops_on_cell(void)
  * @param[in] regno - the register address
  * @param[out] - the content of  the specified register.
  */
-static uint32_t read_cpu_register(CPUArchState *env, hwaddr regno)
+static uint32_t FIESER_helper_read_cpu_register(CPUArchState *env, hwaddr regno)
 {
 #if defined(TARGET_ARM)
     return ((CPUARMState *) env)->regs[(int) regno];
@@ -144,7 +144,7 @@ static uint32_t read_cpu_register(CPUArchState *env, hwaddr regno)
  * @param[in] ending - the string containing the postfix
  * @param[out] - 1 if the string contains the  given ending, 0 otherwise
  */
-int ends_with(const char *string, const char *ending)
+int FIESER_helper_ends_with(const char *string, const char *ending)
 {
     int string_len = strlen(string);
     int ending_len = strlen(ending);
@@ -162,7 +162,7 @@ int ends_with(const char *string, const char *ending)
  * @param[in] string - the given string
  * @param[out] - the timer value as integer
  */
-int timer_to_int(const char *string)
+int FIESER_timer_to_int(const char *string)
 {
     int string_len = strlen(string);
     char timer_string[string_len - 1];
@@ -181,7 +181,7 @@ int timer_to_int(const char *string)
  *
  * @param[out] - the elapsed time as int64
  */
-int64_t fault_injection_controller_getTimer(void)
+int64_t FIESER_timer_get(void)
 {
     return qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) - timer_value;
 }
@@ -190,7 +190,7 @@ int64_t fault_injection_controller_getTimer(void)
  * Initializes the timer value after loading a fault-config file (new
  * fault injection experiment) to the current virtual time in QEMU.
  */
-void fault_injection_controller_initTimer(void)
+void FIESER_timer_init(void)
 {
     timer_value = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
 }
@@ -207,30 +207,30 @@ void fault_injection_controller_initTimer(void)
  *                                   experiment as int64 (could be zero in
  *                                   case of no usage).
  */
-static void time_normalization(FaultList *fault, int64_t *start_time,
+static void FIESER_time_normalization(FaultList *fault, int64_t *start_time,
                                int64_t *stop_time, int64_t *interval)
 {
-    *start_time = (int64_t) timer_to_int(fault->timer);
-    *stop_time = (int64_t) timer_to_int(fault->duration);
+    *start_time = (int64_t) FIESER_timer_to_int(fault->timer);
+    *stop_time = (int64_t) FIESER_timer_to_int(fault->duration);
 
     if (interval != NULL)
-        *interval = (int64_t) timer_to_int(fault->interval);
+        *interval = (int64_t) FIESER_timer_to_int(fault->interval);
 
-    if (fault->timer && ends_with(fault->timer, "MS"))
+    if (fault->timer && FIESER_helper_ends_with(fault->timer, "MS"))
     {
         *start_time *= SCALE_MS;
         *stop_time *= SCALE_MS;
         if (interval != 0)
             *interval *= SCALE_MS;
     }
-    else if (fault->timer && ends_with(fault->timer, "US"))
+    else if (fault->timer && FIESER_helper_ends_with(fault->timer, "US"))
     {
         *start_time *= SCALE_US;
         *stop_time *= SCALE_US;
         if (interval != 0)
             *interval *= SCALE_MS;
     }
-    else if (fault->timer && ends_with(fault->timer, "NS"))
+    else if (fault->timer && FIESER_helper_ends_with(fault->timer, "NS"))
     {
         *start_time *= SCALE_NS;
         *stop_time *= SCALE_NS;
@@ -256,7 +256,7 @@ static void time_normalization(FaultList *fault, int64_t *start_time,
  * @param[in] pc - pc-value, when a fault should be triggered for pc-triggered faults
  *                          (could be zero in case of no usage).
  */
-static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
+static void FIESER_inject_bitflip(CPUArchState *env, hwaddr *addr,
                                            FaultList *fault, FaultInjectionInfo fi_info,
                                            uint32_t pc)
 {
@@ -305,9 +305,9 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
     }
     else if (fault->type && !strcmp(fault->type, "TRANSIENT"))
     {
-        time_normalization(fault, &start_time, &stop_time, NULL);
+        FIESER_time_normalization(fault, &start_time, &stop_time, NULL);
 
-        current_timer_value = fault_injection_controller_getTimer();
+        current_timer_value = FIESER_timer_get();
         if (current_timer_value > start_time
                 && current_timer_value < stop_time)
         {
@@ -346,9 +346,9 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
     }
     else if (fault->type && !strcmp(fault->type, "INTERMITTEND"))
     {
-        time_normalization(fault, &start_time, &stop_time, &interval);
+        FIESER_time_normalization(fault, &start_time, &stop_time, &interval);
 
-        current_timer_value = fault_injection_controller_getTimer();
+        current_timer_value = FIESER_timer_get();
         if (current_timer_value > start_time
                 && current_timer_value < stop_time
                 && (current_timer_value / interval) % 2 == 0)
@@ -431,7 +431,7 @@ static void fault_injection_inject_bitflip(CPUArchState *env, hwaddr *addr,
  * @param[in] pc - pc-value, when a fault should be triggered for pc-triggered faults
  *                          (could be zero in case of no usage).
  */
-static void fault_injection_check_fault_trigger(FaultList *fault, const char *fault_component,
+static void FIESER_check_fault_trigger(FaultList *fault, const char *fault_component,
                                                 unsigned int pc)
 {
     int64_t current_timer_value = 0, start_time = 0, stop_time = 0;
@@ -450,9 +450,9 @@ static void fault_injection_check_fault_trigger(FaultList *fault, const char *fa
     }
     else if (fault->type && !strcmp(fault->type, "TRANSIENT"))
     {
-        time_normalization(fault, &start_time, &stop_time, NULL);
+        FIESER_time_normalization(fault, &start_time, &stop_time, NULL);
 
-        current_timer_value = fault_injection_controller_getTimer();
+        current_timer_value = FIESER_timer_get();
         if (current_timer_value > start_time
                 && current_timer_value < stop_time)
         {
@@ -469,9 +469,9 @@ static void fault_injection_check_fault_trigger(FaultList *fault, const char *fa
     }
     else if (fault->type && !strcmp(fault->type, "INTERMITTEND"))
     {
-        time_normalization(fault, &start_time, &stop_time, &interval);
+        FIESER_time_normalization(fault, &start_time, &stop_time, &interval);
 
-        current_timer_value = fault_injection_controller_getTimer();
+        current_timer_value = FIESER_timer_get();
         if (current_timer_value > start_time
                 && current_timer_value < stop_time
                 && (current_timer_value / interval) % 2 == 0)
@@ -515,7 +515,7 @@ static void fault_injection_check_fault_trigger(FaultList *fault, const char *fa
  * @param[in] pc - pc-value, when a fault should be triggered for pc-triggered faults
  *                          (could be zero in case of no usage).
  */
-static void fault_injection_inject_new_value(CPUArchState *env, hwaddr *addr,
+static void FIESER_inject_new_value(CPUArchState *env, hwaddr *addr,
                                              FaultList *fault, FaultInjectionInfo fi_info,
                                              uint32_t pc)
 {
@@ -552,9 +552,9 @@ static void fault_injection_inject_new_value(CPUArchState *env, hwaddr *addr,
     }
     else if (fault->type && !strcmp(fault->type, "TRANSIENT"))
     {
-        time_normalization(fault, &start_time, &stop_time, NULL);
+        FIESER_time_normalization(fault, &start_time, &stop_time, NULL);
 
-        current_timer_value = fault_injection_controller_getTimer();
+        current_timer_value = FIESER_timer_get();
         if (current_timer_value > start_time
                 && current_timer_value < stop_time)
         {
@@ -581,9 +581,9 @@ static void fault_injection_inject_new_value(CPUArchState *env, hwaddr *addr,
     }
     else if (fault->type && !strcmp(fault->type, "INTERMITTEND"))
     {
-        time_normalization(fault, &start_time, &stop_time, &interval);
+        FIESER_time_normalization(fault, &start_time, &stop_time, &interval);
 
-        current_timer_value = fault_injection_controller_getTimer();
+        current_timer_value = FIESER_timer_get();
         if (current_timer_value > start_time
                 && current_timer_value < stop_time
                 && (current_timer_value / interval) % 2 == 0)
@@ -647,7 +647,7 @@ static void fault_injection_inject_new_value(CPUArchState *env, hwaddr *addr,
  * @param[in] pc - pc-value, when a fault should be triggered for pc-triggered faults
  *                          (could be zero in case of no usage).
  */
-static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *addr,
+static void FIESER_inject_state_register(CPUArchState *env, hwaddr *addr,
                                                   FaultList *fault, FaultInjectionInfo fi_info,
                                                   uint32_t pc)
 {
@@ -705,9 +705,9 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
     }
     else if (fault->type && !strcmp(fault->type, "TRANSIENT"))
     {
-        time_normalization(fault, &start_time, &stop_time, NULL);
+        FIESER_time_normalization(fault, &start_time, &stop_time, NULL);
 
-        current_timer_value = fault_injection_controller_getTimer();
+        current_timer_value = FIESER_timer_get();
         if (current_timer_value > start_time
                 && current_timer_value < stop_time)
         {
@@ -755,9 +755,9 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
     }
     else if (fault->type && !strcmp(fault->type, "INTERMITTEND"))
     {
-        time_normalization(fault, &start_time, &stop_time, &interval);
+        FIESER_time_normalization(fault, &start_time, &stop_time, &interval);
 
-        current_timer_value = fault_injection_controller_getTimer();
+        current_timer_value = FIESER_timer_get();
         if (current_timer_value > start_time
                 && current_timer_value < stop_time
                 && (current_timer_value / interval) % 2 == 0)
@@ -836,7 +836,7 @@ static void fault_injection_inject_state_register(CPUArchState *env, hwaddr *add
  *
  * @param[in] addr - the address or the buffer, where the fault is injected.
  */
-static void fault_injection_controller_memory_address(CPUArchState *env, hwaddr *addr)
+static void FIESER_controller_memory_address(CPUArchState *env, hwaddr *addr)
 {
     FaultList *fault;
     int element = 0;
@@ -877,11 +877,11 @@ static void fault_injection_controller_memory_address(CPUArchState *env, hwaddr 
 #endif
 
             if (!strcmp(fault->mode, "BIT-FLIP"))
-                fault_injection_inject_bitflip(env, addr, fault, fi_info, 0);
+                FIESER_inject_bitflip(env, addr, fault, fi_info, 0);
             else if (!strcmp(fault->mode, "NEW VALUE"))
-                fault_injection_inject_new_value(env, addr, fault, fi_info, 0);
+                FIESER_inject_new_value(env, addr, fault, fi_info, 0);
             else if (!strcmp(fault->mode, "SF"))
-                fault_injection_inject_state_register(env, addr, fault, fi_info, 0);
+                FIESER_inject_state_register(env, addr, fault, fi_info, 0);
 
 #if defined(DEBUG_FAULT_CONTROLLER)
             printf("memory address after: 0x%08x\n", (uint32_t) * addr);
@@ -903,7 +903,7 @@ static void fault_injection_controller_memory_address(CPUArchState *env, hwaddr 
  * @param[in] value -  the value or buffer, which should be written to memory.
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
-static void log_cell_operations_memory(CPUArchState *env, FaultList *fault, hwaddr *addr,
+static void FIESER_helper_log_cell_operations_memory(CPUArchState *env, FaultList *fault, hwaddr *addr,
                                        uint32_t *value, AccessType access_type)
 {
     unsigned memword = 0, mask = 0, set_bit, bit_pos = 0, id = 0;
@@ -964,7 +964,7 @@ static void log_cell_operations_memory(CPUArchState *env, FaultList *fault, hwad
  * @param[in] value -  the value or buffer, which should be written to register.
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
-static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr *addr,
+static void FIESER_controller_memory_content(CPUArchState *env, hwaddr *addr,
                                                       uint32_t *value, AccessType access_type)
 {
     FaultList *fault;
@@ -1013,7 +1013,7 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
             fi_info.access_triggered_content_fault = 1;
             fi_info.fault_on_register = 0;
 
-            log_cell_operations_memory(env, fault, addr, value, access_type);
+            FIESER_helper_log_cell_operations_memory(env, fault, addr, value, access_type);
 
 #if defined(DEBUG_FAULT_CONTROLLER)
             printf("-----------------------START-------------------------------\n");
@@ -1026,19 +1026,19 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
             if (!strcmp(fault->mode, "BIT-FLIP"))
             {
                 uint64_t value64 = *value;
-                fault_injection_inject_bitflip(env, &value64, fault, fi_info, 0);
+                FIESER_inject_bitflip(env, &value64, fault, fi_info, 0);
                 *value = value64;
             }
             else if (!strcmp(fault->mode, "NEW VALUE"))
             {
                 uint64_t value64 = *value;
-                fault_injection_inject_new_value(env, &value64, fault, fi_info, 0);
+                FIESER_inject_new_value(env, &value64, fault, fi_info, 0);
                 *value = value64;
             }
             else if (!strcmp(fault->mode, "SF"))
             {
                 uint64_t value64 = *value;
-                fault_injection_inject_state_register(env, &value64, fault, fi_info, 0);
+                FIESER_inject_state_register(env, &value64, fault, fi_info, 0);
                 *value = value64;
             }
             else
@@ -1085,7 +1085,7 @@ static void fault_injection_controller_memory_content(CPUArchState *env, hwaddr 
  * @param[in] env - Reference to the information of the CPU state.
  * @param[in] addr - the instruction number.
  */
-static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uint32_t *ins, InjectionMode injection_mode)
+static void FIESER_controller_insn(CPUArchState *env, hwaddr *addr, uint32_t *ins, InjectionMode injection_mode)
 {
     FaultList *fault;
     int element = 0;
@@ -1139,7 +1139,7 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
                 continue;
             }
 
-            fault_injection_check_fault_trigger(fault, "cpu", (unsigned int) *addr);
+            FIESER_check_fault_trigger(fault, "cpu", (unsigned int) *addr);
             if (!fault->was_triggered)
                 continue;
 
@@ -1164,7 +1164,7 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
                 continue;
             }
 
-            fault_injection_check_fault_trigger(fault, "cpu", 0);
+            FIESER_check_fault_trigger(fault, "cpu", 0);
             if (!fault->was_triggered)
                 continue;
 
@@ -1211,10 +1211,10 @@ static void fault_injection_controller_insn(CPUArchState *env, hwaddr *addr, uin
  * @param[in] addr - the instruction number.
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
-static void fault_injection_controller_time(CPUArchState *env,
-                                            hwaddr *addr,
-                                            InjectionMode injection_mode,
-                                            int access_type)
+static void FIESER_controller_pc_or_time(CPUArchState *env,
+                                                  hwaddr *addr,
+                                                  InjectionMode injection_mode,
+                                                  int access_type)
 {
     FaultList *fault;
     int element = 0;
@@ -1246,8 +1246,7 @@ static void fault_injection_controller_time(CPUArchState *env,
 
         if (!strcmp(fault->component, "CPU") && !strcmp(fault->target, "CONDITION FLAGS"))
         {
-            fault_injection_check_fault_trigger(fault, "cpu", pc);
-
+            FIESER_check_fault_trigger(fault, "cpu", pc);
             if (!fault->was_triggered)
                 continue;
 
@@ -1270,7 +1269,7 @@ static void fault_injection_controller_time(CPUArchState *env,
 
             profiler_debuglog("%s got PC = %08x\nExpected Next PC = %08x", __func__, pc - 4, pc);
 
-            fault_injection_check_fault_trigger(fault, "cpu", pc);
+            FIESER_check_fault_trigger(fault, "cpu", pc);
             if (!fault->was_triggered)
             {
                 continue;
@@ -1307,26 +1306,26 @@ static void fault_injection_controller_time(CPUArchState *env,
             reg_mem_addr = fault->params.instruction;
 #if defined(DEBUG_FAULT_CONTROLLER)
             unsigned memword = 0;
-            memword = read_cpu_register(env, reg_mem_addr);
+            memword = FIESER_helper_read_cpu_register(env, reg_mem_addr);
             printf("injecting fault on register %d with initial content 0x%08x\n", fault->params.instruction, memword);
 #endif
 
             if (!strcmp(fault->mode, "BIT-FLIP"))
             {
-                fault_injection_inject_bitflip(env, &reg_mem_addr, fault, fi_info, pc);
+                FIESER_inject_bitflip(env, &reg_mem_addr, fault, fi_info, pc);
             }
             else if (!strcmp(fault->mode, "NEW VALUE"))
             {
-                fault_injection_inject_new_value(env, &reg_mem_addr, fault, fi_info, pc);
+                FIESER_inject_new_value(env, &reg_mem_addr, fault, fi_info, pc);
             }
             else if (!strcmp(fault->mode, "SF"))
             {
-                fault_injection_inject_state_register(env, &reg_mem_addr, fault, fi_info, pc);
+                FIESER_inject_state_register(env, &reg_mem_addr, fault, fi_info, pc);
             }
 #if defined(DEBUG_FAULT_CONTROLLER)
             printf("fault status: %d (1-active, 0-inactive)\n", fault->was_triggered);
 
-            memword = read_cpu_register(env, reg_mem_addr);
+            memword = FIESER_helper_read_cpu_register(env, reg_mem_addr);
             printf("cell content after fault injection: 0x%08x\n", memword);
 #endif
         }
@@ -1355,15 +1354,15 @@ static void fault_injection_controller_time(CPUArchState *env,
 
             if (!strcmp(fault->mode, "BIT-FLIP"))
             {
-                fault_injection_inject_bitflip(env, &reg_mem_addr, fault, fi_info, pc);
+                FIESER_inject_bitflip(env, &reg_mem_addr, fault, fi_info, pc);
             }
             else if (!strcmp(fault->mode, "NEW VALUE"))
             {
-                fault_injection_inject_new_value(env, &reg_mem_addr, fault, fi_info, pc);
+                FIESER_inject_new_value(env, &reg_mem_addr, fault, fi_info, pc);
             }
             else if (!strcmp(fault->mode, "SF"))
             {
-                fault_injection_inject_state_register(env, &reg_mem_addr, fault, fi_info, pc);
+                FIESER_inject_state_register(env, &reg_mem_addr, fault, fi_info, pc);
             }
 #if defined(DEBUG_FAULT_CONTROLLER)
             printf("fault status: %d (1-active, 0-inactive)\n", fault->was_triggered);
@@ -1392,7 +1391,7 @@ static void fault_injection_controller_time(CPUArchState *env,
  * @param[in] value -  the value or buffer, which should be written to register.
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
-static void log_cell_operations_register(CPUArchState *env, FaultList *fault, hwaddr *addr,
+static void FIESER_helper_log_cell_operations_register(CPUArchState *env, FaultList *fault, hwaddr *addr,
                                          uint32_t *value, AccessType access_type)
 {
     unsigned memword = 0, mask = 0, set_bit, bit_pos = 0, id = 0;
@@ -1402,7 +1401,7 @@ static void log_cell_operations_register(CPUArchState *env, FaultList *fault, hw
      */
     if (access_type == write_access_type)
     {
-        memword = read_cpu_register(env, *addr);
+        memword = FIESER_helper_read_cpu_register(env, *addr);
         mask = fault->params.mask;
 
         /**
@@ -1450,7 +1449,7 @@ static void log_cell_operations_register(CPUArchState *env, FaultList *fault, hw
  * @param[in] value -  the value or buffer, which should be written to register.
  * @param[in] access_type - if the access-operation is a write, read or execute.
  */
-static void fault_injection_controller_register_content(CPUArchState *env, hwaddr *addr,
+static void FIESER_controller_register_content(CPUArchState *env, hwaddr *addr,
                                                         uint32_t *value, AccessType access_type)
 {
     FaultList *fault;
@@ -1491,7 +1490,7 @@ static void fault_injection_controller_register_content(CPUArchState *env, hwadd
             fi_info.access_triggered_content_fault = 1;
             fi_info.fault_on_register = 1;
 
-            log_cell_operations_register(env, fault, addr, value, access_type);
+            FIESER_helper_log_cell_operations_register(env, fault, addr, value, access_type);
 
 #if defined(DEBUG_FAULT_CONTROLLER)
             printf("-----------------------START-------------------------------\n");
@@ -1504,19 +1503,19 @@ static void fault_injection_controller_register_content(CPUArchState *env, hwadd
             if (!strcmp(fault->mode, "BIT-FLIP"))
             {
                 uint64_t value64 = *value;
-                fault_injection_inject_bitflip(env, &value64, fault, fi_info, 0);
+                FIESER_inject_bitflip(env, &value64, fault, fi_info, 0);
                 *value = value64;
             }
             else if (!strcmp(fault->mode, "NEW VALUE"))
             {
                 uint64_t value64 = *value;
-                fault_injection_inject_new_value(env, &value64, fault, fi_info, 0);
+                FIESER_inject_new_value(env, &value64, fault, fi_info, 0);
                 *value = value64;
             }
             else if (!strcmp(fault->mode, "SF"))
             {
                 uint64_t value64 = *value;
-                fault_injection_inject_state_register(env, &value64, fault, fi_info, 0);
+                FIESER_inject_state_register(env, &value64, fault, fi_info, 0);
                 *value = value64;
             }
             else
@@ -1532,7 +1531,7 @@ static void fault_injection_controller_register_content(CPUArchState *env, hwadd
 
             if (fault->params.cf_address != -1)
             {
-                memword = read_cpu_register(env, fault->params.cf_address);
+                memword = FIESER_helper_read_cpu_register(env, fault->params.cf_address);
                 printf("coupled cell content after fault injection: 0x%08x\n", memword);
             }
 
@@ -1541,7 +1540,7 @@ static void fault_injection_controller_register_content(CPUArchState *env, hwadd
             else if (access_type == write_access_type)
                 printf("value to write into cell after fault injection: 0x%08x\n", *value);
 
-            memword = read_cpu_register(env, *addr);
+            memword = FIESER_helper_read_cpu_register(env, *addr);
             printf("cell content after fault injection: 0x%08x\n", memword);
             printf("-----------------------END---------------------------------\n");
 #endif
@@ -1560,7 +1559,7 @@ static void fault_injection_controller_register_content(CPUArchState *env, hwadd
  *
  * @param[in] addr - the address of the register, where the fault is injected.
  */
-static void fault_injection_controller_register_address(CPUArchState *env, hwaddr *addr)
+static void FIESER_controller_register_address(CPUArchState *env, hwaddr *addr)
 {
     FaultList *fault;
     int element = 0;
@@ -1599,11 +1598,11 @@ static void fault_injection_controller_register_address(CPUArchState *env, hwadd
             fi_info.fault_on_register = 1;
 
             if (!strcmp(fault->mode, "BIT-FLIP"))
-                fault_injection_inject_bitflip(env, addr, fault, fi_info, 0);
+                FIESER_inject_bitflip(env, addr, fault, fi_info, 0);
             else if (!strcmp(fault->mode, "NEW VALUE"))
-                fault_injection_inject_new_value(env, addr, fault, fi_info, 0);
+                FIESER_inject_new_value(env, addr, fault, fi_info, 0);
             else if (!strcmp(fault->mode, "SF"))
-                fault_injection_inject_state_register(env, addr, fault, fi_info, 0);
+                FIESER_inject_state_register(env, addr, fault, fi_info, 0);
 
 #if defined(DEBUG_FAULT_CONTROLLER)
             printf("fault status: %d (1-active, 0-inactive)\n", fault->was_triggered);
@@ -1614,7 +1613,7 @@ static void fault_injection_controller_register_address(CPUArchState *env, hwadd
     }
 }
 
-void start_automatic_test_process(CPUArchState *env)
+void FIESER_start_automatic_test_process(CPUArchState *env)
 {
     static int already_set = 0, shutting_down = 0;
 
@@ -1655,7 +1654,7 @@ void start_automatic_test_process(CPUArchState *env)
  * @param[in] access_type - if the access-operation is a write, read or execute.
  *
  */
-void fault_injection_hook(CPUArchState *env, hwaddr *addr,
+void FIESER_hook(CPUArchState *env, hwaddr *addr,
                           uint32_t *value, InjectionMode injection_mode,
                           AccessType access_type)
 {
@@ -1671,12 +1670,12 @@ void fault_injection_hook(CPUArchState *env, hwaddr *addr,
     switch (injection_mode)
     {
     case FI_MEMORY_ADDR:
-        fault_injection_controller_memory_address(env, addr);
+        FIESER_controller_memory_address(env, addr);
         break;
     case FI_MEMORY_CONTENT:
         if (env)
         {
-            fault_injection_controller_memory_content(env, addr, value, access_type);
+            FIESER_controller_memory_content(env, addr, value, access_type);
             return;
         }
 
@@ -1691,19 +1690,19 @@ void fault_injection_hook(CPUArchState *env, hwaddr *addr,
             CPUState *cpu = next_cpu;
             CPUArchState *env = cpu->env_ptr;
 
-            fault_injection_controller_memory_content(env, addr, value, access_type);
+            FIESER_controller_memory_content(env, addr, value, access_type);
         }
         break;
     case FI_INSTRUCTION_VALUE_ARM:
     case FI_INSTRUCTION_VALUE_THUMB32:
     case FI_INSTRUCTION_VALUE_THUMB16:
-        fault_injection_controller_insn(env, addr, value, injection_mode);
+        FIESER_controller_insn(env, addr, value, injection_mode);
         break;
     case FI_REGISTER_ADDR:
-        fault_injection_controller_register_address(env, addr);
+        FIESER_controller_register_address(env, addr);
         break;
     case FI_REGISTER_CONTENT:
-        fault_injection_controller_register_content(env, addr, value, access_type);
+        FIESER_controller_register_content(env, addr, value, access_type);
         break;
     case FI_TIME:
     case FI_PC_ARM:
@@ -1720,7 +1719,7 @@ void fault_injection_hook(CPUArchState *env, hwaddr *addr,
             tlb_flush_page(CPU(cpu), (target_ulong) fault->params.cf_address);
         }
 
-        fault_injection_controller_time(env, addr, injection_mode, access_type);
+        FIESER_controller_pc_or_time(env, addr, injection_mode, access_type);
         break;
     default:
         fprintf(stderr, "Unknown fault injection target!\n");
@@ -1728,7 +1727,7 @@ void fault_injection_hook(CPUArchState *env, hwaddr *addr,
     }
 }
 
-void setMonitor(Monitor *mon)
+void FIESER_setMonitor(Monitor *mon)
 {
     qemu_serial_monitor = mon;
 }

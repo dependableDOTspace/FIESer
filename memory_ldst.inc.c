@@ -68,7 +68,7 @@ static inline uint32_t glue(address_space_ldl_internal, SUFFIX)(ARG1_DECL,
         *result = r;
     }
     //CF FIES
-    fault_injection_hook(NULL, &addr, ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
+    FIESER_hook(NULL, &addr, ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
     //CF FIES END
     if (release_lock) {
         qemu_mutex_unlock_iothread();
@@ -166,7 +166,7 @@ static inline uint64_t glue(address_space_ldq_internal, SUFFIX)(ARG1_DECL,
         *result = r;
     }
     //CF FIES
-    fault_injection_hook(NULL, &addr, ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
+    FIESER_hook(NULL, &addr, ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
     //CF FIES END
     if (release_lock) {
         qemu_mutex_unlock_iothread();
@@ -303,7 +303,7 @@ static inline uint32_t glue(address_space_lduw_internal, SUFFIX)(ARG1_DECL,
         *result = r;
     }
 // CF FIES
-    fault_injection_hook(NULL, &addr, ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
+    FIESER_hook(NULL, &addr, ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
 // CF FIES END
     if (release_lock) {
         qemu_mutex_unlock_iothread();
@@ -367,7 +367,7 @@ void glue(address_space_stl_notdirty, SUFFIX)(ARG1_DECL,
 
     RCU_READ_LOCK();
 // CF FIES
-    fault_injection_hook(NULL, &addr, &val, FI_MEMORY_CONTENT, write_access_type);
+    FIESER_hook(NULL, &addr, &val, FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
     
     mr = TRANSLATE(addr, &addr1, &l, true);
@@ -414,7 +414,7 @@ static inline void glue(address_space_stl_internal, SUFFIX)(ARG1_DECL,
 
     RCU_READ_LOCK();
 // CF FIES
-    fault_injection_hook(NULL, &addr, &val, FI_MEMORY_CONTENT, write_access_type);
+    FIESER_hook(NULL, &addr, &val, FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
 
     mr = TRANSLATE(addr, &addr1, &l, true);
@@ -547,7 +547,7 @@ static inline void glue(address_space_stw_internal, SUFFIX)(ARG1_DECL,
 
     RCU_READ_LOCK();
 // CF FIES
-    fault_injection_hook(NULL, &addr, &val, FI_MEMORY_CONTENT, write_access_type);
+    FIESER_hook(NULL, &addr, &val, FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
 
     mr = TRANSLATE(addr, &addr1, &l, true);
@@ -645,7 +645,7 @@ static void glue(address_space_stq_internal, SUFFIX)(ARG1_DECL,
     mr = TRANSLATE(addr, &addr1, &l, true);
     
     // CF FIES
-    fault_injection_hook(NULL, &addr, (uint32_t*)&val, FI_MEMORY_CONTENT, write_access_type);
+    FIESER_hook(NULL, &addr, (uint32_t*)&val, FI_MEMORY_CONTENT, write_access_type);
     // CF FIES END
     
     if (l < 8 || !IS_DIRECT(mr, true)) {

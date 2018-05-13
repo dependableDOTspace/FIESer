@@ -12221,7 +12221,7 @@ static void arm_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     profiler_debuglog("%s PC = %08x    ARM = %08x\n", __func__, dc->pc, insn);
     
     hwaddr pc = dc->pc;
-    fault_injection_hook(env, &pc, &insn, FI_INSTRUCTION_VALUE_ARM, -1);
+    FIESER_hook(env, &pc, &insn, FI_INSTRUCTION_VALUE_ARM, -1);
     dc->pc = pc;
     // CF FIES END
     }
@@ -12325,7 +12325,7 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
         // not accessing the PC and expecting it to be incremented already
         dc->pc -= 2;
         uint64_t pc64 = dc->pc;
-        fault_injection_hook(env, &pc64, &insn, FI_INSTRUCTION_VALUE_THUMB32, -1);
+        FIESER_hook(env, &pc64, &insn, FI_INSTRUCTION_VALUE_THUMB32, -1);
         dc->pc += 2;
         // CF FIES END
 
@@ -12334,7 +12334,7 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     //CF: FIES new feature
     else {
         uint64_t pc64 = dc->pc;
-        fault_injection_hook(env, &pc64, &insn, FI_INSTRUCTION_VALUE_THUMB16, -1);
+        FIESER_hook(env, &pc64, &insn, FI_INSTRUCTION_VALUE_THUMB16, -1);
         
         dc->pc += 2;
         

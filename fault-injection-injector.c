@@ -19,31 +19,31 @@
  * @param[in] fi_info - information for performing faults.
  */
 static void do_inject_register_arm_bf(CPUARMState *env, int register_num,
-																FaultInjectionInfo fi_info)
+                                      FaultInjectionInfo fi_info)
 {
-	int cpsr_value = 0;
+    int cpsr_value = 0;
 
     if (register_num < 16)
     {
-    	/* bit-flip in general purpose registers*/
-        if ( (env->regs[register_num] >> fi_info.injected_bit) & 0x1)
+        /* bit-flip in general purpose registers*/
+        if ((env->regs[register_num] >> fi_info.injected_bit) & 0x1)
             env->regs[register_num] &= ~(1 << fi_info.injected_bit);
         else
             env->regs[register_num] |= (1 << fi_info.injected_bit);
     }
     else
     {
-    	/* bit-flip in CPSR*/
-    	cpsr_value =  cpsr_read(env);
+        /* bit-flip in CPSR*/
+        cpsr_value = cpsr_read(env);
 
-        if ( (cpsr_read(env) >> fi_info.injected_bit) & 0x1)
+        if ((cpsr_read(env) >> fi_info.injected_bit) & 0x1)
         {
-        	cpsr_value &= ~(1 << fi_info.injected_bit);
+            cpsr_value &= ~(1 << fi_info.injected_bit);
             cpsr_write(env, cpsr_value, 0xFFFFFFFF, CPSRWriteRaw);
         }
         else
         {
-        	cpsr_value |= (1 << fi_info.injected_bit);
+            cpsr_value |= (1 << fi_info.injected_bit);
             cpsr_write(env, cpsr_value, 0xFFFFFFFF, CPSRWriteRaw);
         }
     }
@@ -60,32 +60,32 @@ static void do_inject_register_arm_bf(CPUARMState *env, int register_num,
  * @param[in] fi_info - information for performing faults.
  */
 static void do_inject_register_arm_rs(CPUARMState *env, int register_num,
-													FaultInjectionInfo fi_info)
+                                      FaultInjectionInfo fi_info)
 {
-	int cpsr_value = 0;
+    int cpsr_value = 0;
 
     if (register_num < 16)
     {
-    	if (fi_info.bit_value)
-    		env->regs[register_num] |= (1 << fi_info.injected_bit);
-    	else
-    		env->regs[register_num] &= ~(1 << fi_info.injected_bit);
+        if (fi_info.bit_value)
+            env->regs[register_num] |= (1 << fi_info.injected_bit);
+        else
+            env->regs[register_num] &= ~(1 << fi_info.injected_bit);
     }
     else
     {
-    	/* bit-flip in CPSR*/
-    	cpsr_value =  cpsr_read(env);
+        /* bit-flip in CPSR*/
+        cpsr_value = cpsr_read(env);
 
-    	if (fi_info.bit_value)
-    	{
-    		cpsr_value |= (1 << fi_info.injected_bit);
-    	    cpsr_write(env, cpsr_value, 0xFFFFFFFF, CPSRWriteRaw);
-    	}
-    	else
-    	{
-    		cpsr_value &= ~(1 << fi_info.injected_bit);
-    	    cpsr_write(env, cpsr_value, 0xFFFFFFFF, CPSRWriteRaw);
-    	}
+        if (fi_info.bit_value)
+        {
+            cpsr_value |= (1 << fi_info.injected_bit);
+            cpsr_write(env, cpsr_value, 0xFFFFFFFF, CPSRWriteRaw);
+        }
+        else
+        {
+            cpsr_value &= ~(1 << fi_info.injected_bit);
+            cpsr_write(env, cpsr_value, 0xFFFFFFFF, CPSRWriteRaw);
+        }
     }
 }
 
@@ -100,12 +100,12 @@ static void do_inject_register_arm_rs(CPUARMState *env, int register_num,
  * @param[in] fi_info - information for performing faults.
  */
 static void do_inject_new_register_value_arm(CPUARMState *env, int register_num,
-																				FaultInjectionInfo fi_info)
+                                             FaultInjectionInfo fi_info)
 {
     if (register_num < 16)
-   		env->regs[register_num] = fi_info.bit_value;
+        env->regs[register_num] = fi_info.bit_value;
     else
-   	    cpsr_write(env, fi_info.bit_value, 0xFFFFFFFF, CPSRWriteRaw);
+        cpsr_write(env, fi_info.bit_value, 0xFFFFFFFF, CPSRWriteRaw);
 }
 
 /**
@@ -116,14 +116,14 @@ static void do_inject_new_register_value_arm(CPUARMState *env, int register_num,
  * @param[in] fi_info - information for performing faults.
  */
 static void do_inject_register_arm(CPUARMState *env, hwaddr *addr,
-															FaultInjectionInfo fi_info)
+                                   FaultInjectionInfo fi_info)
 {
-	if (fi_info.bit_flip)
-		do_inject_register_arm_bf(env, (int)*addr, fi_info);
-	else if (!fi_info.bit_flip && !fi_info.new_value)
-		do_inject_register_arm_rs(env,  (int)*addr, fi_info);
-	else if (!fi_info.bit_flip && fi_info.new_value)
-		do_inject_new_register_value_arm(env,  (int)*addr, fi_info);
+    if (fi_info.bit_flip)
+        do_inject_register_arm_bf(env, (int) *addr, fi_info);
+    else if (!fi_info.bit_flip && !fi_info.new_value)
+        do_inject_register_arm_rs(env, (int) *addr, fi_info);
+    else if (!fi_info.bit_flip && fi_info.new_value)
+        do_inject_new_register_value_arm(env, (int) *addr, fi_info);
 }
 
 /**
@@ -148,11 +148,11 @@ static void do_inject_look_up_error_arm(CPUARMState *env,
 
         // Change the instruction pointed to by PC and replace with
         // lockup instruction
-        cpu_memory_rw_debug(cpu, env->regs[15], (uint8_t *)&memword, instruction_length, 0);
+        cpu_memory_rw_debug(cpu, env->regs[15], (uint8_t *) & memword, instruction_length, 0);
         saved_insn = memword;
         memword = lockup_instruction;
-        
-        cpu_memory_rw_debug(cpu, env->regs[15], (uint8_t *)&memword, instruction_length, 1);
+
+        cpu_memory_rw_debug(cpu, env->regs[15], (uint8_t *) & memword, instruction_length, 1);
         saved_pc = env->regs[15];
         saved_length = instruction_length;
     }
@@ -161,7 +161,7 @@ static void do_inject_look_up_error_arm(CPUARMState *env,
         // Restore PC for second hook after arm_post_translate_insn in thumb/arm_tr_translate_insn
         if (env->regs[15] != saved_pc)
         {
-            cpu_memory_rw_debug(cpu, saved_pc, (uint8_t *)&saved_insn, saved_length, 1);
+            cpu_memory_rw_debug(cpu, saved_pc, (uint8_t *) & saved_insn, saved_length, 1);
             saved_insn = 0;
         }
     }
@@ -175,11 +175,11 @@ static void do_inject_look_up_error_arm(CPUARMState *env,
  */
 void do_inject_look_up_error(CPUArchState *env, unsigned lockup_instruction, int injection_length)
 {
-	#if defined(TARGET_ARM)
-		do_inject_look_up_error_arm(env, lockup_instruction, injection_length);
-	#else
-		#error unsupported target CPU
-	#endif
+#if defined(TARGET_ARM)
+    do_inject_look_up_error_arm(env, lockup_instruction, injection_length);
+#else
+#error unsupported target CPU
+#endif
 }
 
 /**
@@ -191,61 +191,62 @@ void do_inject_look_up_error(CPUArchState *env, unsigned lockup_instruction, int
  * @param[in] new_flag_value - 0 for reseting, 1 for setting the condition flag
  */
 static void do_inject_condition_flags_arm(CPUARMState *env,
-													const char* src_flag_name, int new_flag_value)
+                                          const char* src_flag_name,
+                                          int new_flag_value)
 {
-	if (new_flag_value != 0 && new_flag_value != 1)
-		return;
+    if (new_flag_value != 0 && new_flag_value != 1)
+        return;
 
-	if ( !strcmp("CF", src_flag_name) )
-	{
-		/* Carry flag */
-		//env->CF = new_flag_value;
-		if (new_flag_value)
-			cpsr_write(env, (1 << 29), (1 << 29), CPSRWriteRaw);
-		else
-			cpsr_write(env, 0,  (1 << 29), CPSRWriteRaw);
-	}
-	else if ( !strcmp("NF", src_flag_name) )
-	{
-		/* Negative or Less than */
-		//env->NF = new_flag_value;
-		if (new_flag_value)
-			cpsr_write(env, (1 << 29), (1 << 29), CPSRWriteRaw);
-		else
-			cpsr_write(env, 0,  (1 << 29), CPSRWriteRaw);
-	}
-	else if ( !strcmp("QF", src_flag_name) )
-	{
-		/* Sticky overflow */
-		//env->QF = new_flag_value;
-		if (new_flag_value)
-			cpsr_write(env, (1 << 27), (1 << 27), CPSRWriteRaw);
-		else
-			cpsr_write(env, 0,  (1 << 27), CPSRWriteRaw);
-	}
-	else if ( !strcmp("VF", src_flag_name) )
-	{
-		/* Overflow */
-		//env->VF = new_flag_value;
-		if (new_flag_value)
-			cpsr_write(env, (1 << 28), (1 << 28), CPSRWriteRaw);
-		else
-			cpsr_write(env, 0,  (1 << 28), CPSRWriteRaw);
-	}
-	else if ( !strcmp("ZF", src_flag_name) )
-	{
-		/* Zero flag */
-		//env->ZF = new_flag_value;
-		if (new_flag_value)
-			cpsr_write(env, (1 << 30), (1 << 30), CPSRWriteRaw);
-		else
-			cpsr_write(env, 0,  (1 << 30), CPSRWriteRaw);
-	}
-	else
-	{
-		fprintf(stderr, "error: unknown condition flag\n");
-		return;
-	}
+    if (!strcmp("CF", src_flag_name))
+    {
+        /* Carry flag */
+        //env->CF = new_flag_value;
+        if (new_flag_value)
+            cpsr_write(env, (1 << 29), (1 << 29), CPSRWriteRaw);
+        else
+            cpsr_write(env, 0, (1 << 29), CPSRWriteRaw);
+    }
+    else if (!strcmp("NF", src_flag_name))
+    {
+        /* Negative or Less than */
+        //env->NF = new_flag_value;
+        if (new_flag_value)
+            cpsr_write(env, (1 << 29), (1 << 29), CPSRWriteRaw);
+        else
+            cpsr_write(env, 0, (1 << 29), CPSRWriteRaw);
+    }
+    else if (!strcmp("QF", src_flag_name))
+    {
+        /* Sticky overflow */
+        //env->QF = new_flag_value;
+        if (new_flag_value)
+            cpsr_write(env, (1 << 27), (1 << 27), CPSRWriteRaw);
+        else
+            cpsr_write(env, 0, (1 << 27), CPSRWriteRaw);
+    }
+    else if (!strcmp("VF", src_flag_name))
+    {
+        /* Overflow */
+        //env->VF = new_flag_value;
+        if (new_flag_value)
+            cpsr_write(env, (1 << 28), (1 << 28), CPSRWriteRaw);
+        else
+            cpsr_write(env, 0, (1 << 28), CPSRWriteRaw);
+    }
+    else if (!strcmp("ZF", src_flag_name))
+    {
+        /* Zero flag */
+        //env->ZF = new_flag_value;
+        if (new_flag_value)
+            cpsr_write(env, (1 << 30), (1 << 30), CPSRWriteRaw);
+        else
+            cpsr_write(env, 0, (1 << 30), CPSRWriteRaw);
+    }
+    else
+    {
+        fprintf(stderr, "error: unknown condition flag\n");
+        return;
+    }
 }
 
 /**
@@ -257,13 +258,13 @@ static void do_inject_condition_flags_arm(CPUARMState *env,
  * @param[in] new_flag_value - 0 for reseting, 1 for setting the condition flag
  */
 void do_inject_condition_flags(CPUArchState *env,
-								const char* src_flag_name, int new_flag_value)
+                               const char* src_flag_name, int new_flag_value)
 {
-	#if defined(TARGET_ARM)
-		do_inject_condition_flags_arm(env, src_flag_name, new_flag_value);
-	#else
-		#error unsupported target CPU
-	#endif
+#if defined(TARGET_ARM)
+    do_inject_condition_flags_arm(env, src_flag_name, new_flag_value);
+#else
+#error unsupported target CPU
+#endif
 }
 
 /**
@@ -273,9 +274,9 @@ void do_inject_condition_flags(CPUArchState *env,
  * @param[in] repl_insn - value of the new instruction  number.
  */
 static void do_inject_insn_arm(unsigned int *orig_insn,
-														unsigned int repl_insn)
+                               unsigned int repl_insn)
 {
-	*orig_insn = repl_insn;
+    *orig_insn = repl_insn;
 }
 
 /**
@@ -285,13 +286,13 @@ static void do_inject_insn_arm(unsigned int *orig_insn,
  * @param[in] repl_insn - value of the new instruction  number.
  */
 void do_inject_insn(unsigned int *orig_insn,
-									unsigned int repl_insn)
+                    unsigned int repl_insn)
 {
-	#if defined(TARGET_ARM)
-		do_inject_insn_arm(orig_insn, repl_insn);
-	#else
-		#error unsupported target CPU
-	#endif
+#if defined(TARGET_ARM)
+    do_inject_insn_arm(orig_insn, repl_insn);
+#else
+#error unsupported target CPU
+#endif
 }
 
 /**
@@ -302,10 +303,10 @@ void do_inject_insn(unsigned int *orig_insn,
  * @param[in] injected_bit - the position of the affected bit.
  */
 static void do_inject_memory_buffer_arm_bf(hwaddr *value,
-																				int injected_bit)
+                                           int injected_bit)
 {
-    if ( (*value >> injected_bit) & 0x1)
-    	*value &= ~(1 << injected_bit);
+    if ((*value >> injected_bit) & 0x1)
+        *value &= ~(1 << injected_bit);
     else
         *value |= (1 << injected_bit);
 }
@@ -318,12 +319,12 @@ static void do_inject_memory_buffer_arm_bf(hwaddr *value,
  * @param[in] fi_info - information for performing faults.
  */
 static void do_inject_memory_buffer_arm_rs(hwaddr *value,
-																			FaultInjectionInfo fi_info)
+                                           FaultInjectionInfo fi_info)
 {
-	if (fi_info.bit_value)
-		*value |= (1 << fi_info.injected_bit);
-	else
-		*value &= ~(1 << fi_info.injected_bit);
+    if (fi_info.bit_value)
+        *value |= (1 << fi_info.injected_bit);
+    else
+        *value &= ~(1 << fi_info.injected_bit);
 }
 
 /**
@@ -333,9 +334,9 @@ static void do_inject_memory_buffer_arm_rs(hwaddr *value,
  * @param[in] fi_info - information for performing faults.
  */
 static void do_inject_new_memory_value_buffer_arm(hwaddr *orig_value,
-																					FaultInjectionInfo fi_info)
+                                                  FaultInjectionInfo fi_info)
 {
-	*orig_value = fi_info.bit_value;
+    *orig_value = fi_info.bit_value;
 }
 
 /**
@@ -347,27 +348,27 @@ static void do_inject_new_memory_value_buffer_arm(hwaddr *orig_value,
  * @param[in] injected_bit - the position of the affected bit.
  */
 static void do_inject_memory_arm_bf(CPUARMState *env, hwaddr inject_address,
-																	int injected_bit)
+                                    int injected_bit)
 {
-     CPUState *cpu = ENV_GET_CPU(env);
+    CPUState *cpu = ENV_GET_CPU(env);
 
-     unsigned memword;
-     uint8_t *membytes = (uint8_t *)&memword;
+    unsigned memword;
+    uint8_t *membytes = (uint8_t *) & memword;
 
-     // Read memory
-     cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 0);
+    // Read memory
+    cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 0);
 
-     // Flip bit and write back
-     if ((memword  >> injected_bit) & 0x1)
-     {
-         memword &= ~(1 << injected_bit);
-         cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 1);
-     }
-     else
-     {
-         memword |= (1 << injected_bit);
-         cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 1);
-     }
+    // Flip bit and write back
+    if ((memword >> injected_bit) & 0x1)
+    {
+        memword &= ~(1 << injected_bit);
+        cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 1);
+    }
+    else
+    {
+        memword |= (1 << injected_bit);
+        cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 1);
+    }
 }
 
 /**
@@ -379,20 +380,20 @@ static void do_inject_memory_arm_bf(CPUARMState *env, hwaddr inject_address,
  * @param[in] injected_bit - the position of the affected bit.
  */
 static void do_inject_memory_arm_rs(CPUARMState *env, hwaddr inject_address,
-																	FaultInjectionInfo fi_info)
+                                    FaultInjectionInfo fi_info)
 {
     CPUState *cpu = ENV_GET_CPU(env);
 
     unsigned memword;
-    uint8_t *membytes = (uint8_t *)&memword;
+    uint8_t *membytes = (uint8_t *) & memword;
 
     // Read memory
     cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 0);
 
     if (fi_info.bit_value)
-    	memword |= (1 << fi_info.injected_bit);
+        memword |= (1 << fi_info.injected_bit);
     else
-    	memword &= ~(1 << fi_info.injected_bit);
+        memword &= ~(1 << fi_info.injected_bit);
 
     cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 1);
 }
@@ -405,11 +406,11 @@ static void do_inject_memory_arm_rs(CPUARMState *env, hwaddr inject_address,
  *                                             the fault should be injected.
  * @param[in] injected_bit - the position of the affected bit.
  */
-static void do_inject_new_memory_value_arm(CPUARMState *env,  hwaddr inject_address,
-																				FaultInjectionInfo fi_info)
+static void do_inject_new_memory_value_arm(CPUARMState *env, hwaddr inject_address,
+                                           FaultInjectionInfo fi_info)
 {
     CPUState *cpu = ENV_GET_CPU(env);
-    uint8_t *membytes = (uint8_t *)&fi_info.bit_value;
+    uint8_t *membytes = (uint8_t *) & fi_info.bit_value;
 
     cpu_memory_rw_debug(cpu, inject_address, membytes, (MEMORY_WIDTH / 8), 1);
 }
@@ -421,16 +422,15 @@ static void do_inject_new_memory_value_arm(CPUARMState *env,  hwaddr inject_addr
  * @param[in] fi_info - information for performing faults.
  */
 static void do_inject_memory_buffer_arm(hwaddr *addr,
-																FaultInjectionInfo fi_info)
+                                        FaultInjectionInfo fi_info)
 {
-	if (fi_info.bit_flip)
-		do_inject_memory_buffer_arm_bf(addr, fi_info.injected_bit);
-	else if (!fi_info.bit_flip && !fi_info.new_value)
-		do_inject_memory_buffer_arm_rs(addr, fi_info);
-	else if (!fi_info.bit_flip && fi_info.new_value)
-		do_inject_new_memory_value_buffer_arm(addr, fi_info);
+    if (fi_info.bit_flip)
+        do_inject_memory_buffer_arm_bf(addr, fi_info.injected_bit);
+    else if (!fi_info.bit_flip && !fi_info.new_value)
+        do_inject_memory_buffer_arm_rs(addr, fi_info);
+    else if (!fi_info.bit_flip && fi_info.new_value)
+        do_inject_new_memory_value_buffer_arm(addr, fi_info);
 }
-
 
 /**
  * Decides, based on the information held by fi_info, which function should be called.
@@ -440,14 +440,14 @@ static void do_inject_memory_buffer_arm(hwaddr *addr,
  * @param[in] fi_info - information for performing faults.
  */
 static void do_inject_memory_arm(CPUARMState *env, hwaddr *addr,
-															FaultInjectionInfo fi_info)
+                                 FaultInjectionInfo fi_info)
 {
-	if (fi_info.bit_flip)
-		do_inject_memory_arm_bf(env, *addr, fi_info.injected_bit);
-	else if (!fi_info.bit_flip && !fi_info.new_value)
-		do_inject_memory_arm_rs(env, *addr, fi_info);
-	else if (!fi_info.bit_flip && fi_info.new_value)
-		do_inject_new_memory_value_arm(env, *addr, fi_info);
+    if (fi_info.bit_flip)
+        do_inject_memory_arm_bf(env, *addr, fi_info.injected_bit);
+    else if (!fi_info.bit_flip && !fi_info.new_value)
+        do_inject_memory_arm_rs(env, *addr, fi_info);
+    else if (!fi_info.bit_flip && fi_info.new_value)
+        do_inject_new_memory_value_arm(env, *addr, fi_info);
 }
 
 /**
@@ -460,24 +460,24 @@ static void do_inject_memory_arm(CPUARMState *env, hwaddr *addr,
  * @param[in] fi_info - information for performing faults.
  */
 void do_inject_memory_register(CPUArchState *env, hwaddr *addr,
-														FaultInjectionInfo fi_info)
+                               FaultInjectionInfo fi_info)
 {
-	#if defined(TARGET_ARM)
-		if (fi_info.fault_on_register)
-		{
-			if (fi_info.fault_on_address || fi_info.access_triggered_content_fault)
-				do_inject_memory_buffer_arm(addr, fi_info);
-			else
-				do_inject_register_arm(env, addr, fi_info);
-		}
-		else
-		{
-			if (fi_info.fault_on_address || fi_info.access_triggered_content_fault)
-				do_inject_memory_buffer_arm(addr, fi_info);
-			else
-				do_inject_memory_arm(env, addr, fi_info);
-		}
-	#else
-		#error unsupported target CPU
-	#endif
+#if defined(TARGET_ARM)
+    if (fi_info.fault_on_register)
+    {
+        if (fi_info.fault_on_address || fi_info.access_triggered_content_fault)
+            do_inject_memory_buffer_arm(addr, fi_info);
+        else
+            do_inject_register_arm(env, addr, fi_info);
+    }
+    else
+    {
+        if (fi_info.fault_on_address || fi_info.access_triggered_content_fault)
+            do_inject_memory_buffer_arm(addr, fi_info);
+        else
+            do_inject_memory_arm(env, addr, fi_info);
+    }
+#else
+#error unsupported target CPU
+#endif
 }

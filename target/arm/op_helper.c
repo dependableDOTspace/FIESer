@@ -44,7 +44,7 @@ static void raise_exception(CPUARMState *env, uint32_t excp,
 void HELPER(fault_controller_call_time)(CPUARMState *env, uint32_t pc)
 {
     uint64_t pc64 = pc;
-    fault_injection_hook(env, &pc64, NULL, FI_TIME, -1);
+    FIESER_hook(env, &pc64, NULL, FI_TIME, -1);
     pc = pc64;
 }
 
@@ -52,14 +52,14 @@ void HELPER(fault_controller_call_pc)(CPUARMState *env, uint32_t pc, uint32_t ty
 {
     uint64_t pc64 = pc;
     InjectionMode t = type;
-    fault_injection_hook(env, &pc64, NULL, t, -1);
+    FIESER_hook(env, &pc64, NULL, t, -1);
     pc = pc64;
 }
 
 uint32_t HELPER(fault_controller_call_reg_decoder)(CPUARMState *env, uint32_t regno)
 {
     uint64_t regno64 = regno;
-    fault_injection_hook(env, &regno64, NULL, FI_REGISTER_ADDR, -1);
+    FIESER_hook(env, &regno64, NULL, FI_REGISTER_ADDR, -1);
     regno = regno64;
 
     return regno;
@@ -74,7 +74,7 @@ uint32_t HELPER(fault_controller_call_store_reg)(CPUARMState *env, uint32_t valu
 		printf("ORIGINAL: write %x to reg %d (initial content: %x)\n", value_to_write, regno, env->regs[regno]);
 #endif
 
-	fault_injection_hook(env, &regno64, &value_to_write, FI_REGISTER_CONTENT, write_access_type);
+	FIESER_hook(env, &regno64, &value_to_write, FI_REGISTER_CONTENT, write_access_type);
 
 #if defined(DEBUG_FAULT_CONTROLLER)
 	if (regno == 10)
@@ -93,7 +93,7 @@ uint32_t HELPER(fault_controller_call_load_reg)(CPUARMState *env, uint32_t reg_v
 		printf("ORIGINAL: read %x from reg %d\n", reg_val, regno);
 #endif
 
-	fault_injection_hook(env, &regno64, &reg_val, FI_REGISTER_CONTENT, read_access_type);
+	FIESER_hook(env, &regno64, &reg_val, FI_REGISTER_CONTENT, read_access_type);
 
 #if defined(DEBUG_FAULT_CONTROLLER)
 	if (regno == 10)

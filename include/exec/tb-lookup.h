@@ -31,7 +31,7 @@ tb_lookup__cpu_state(CPUState *cpu, target_ulong *pc, target_ulong *cs_base,
 
     cpu_get_tb_cpu_state(env, pc, cs_base, flags);
 // CF FIES    
-    start_automatic_test_process(env);
+    FIESER_start_automatic_test_process(env);
 // CF FIES END    
     hash = tb_jmp_cache_hash_func(*pc);
     tb = atomic_rcu_read(&cpu->tb_jmp_cache[hash]);

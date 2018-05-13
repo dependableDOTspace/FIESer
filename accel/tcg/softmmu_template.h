@@ -142,7 +142,7 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
         res = TGT_LE(res);
 // CF FIES
         uint64_t addr64 = addr;
-        fault_injection_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
+        FIESER_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
 // CF FIES END
         return res;
     }
@@ -165,7 +165,7 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
         res = (res1 >> shift) | (res2 << ((DATA_SIZE * 8) - shift));
 // CF FIES
         uint64_t addr64 = addr;
-        fault_injection_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
+        FIESER_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
 // CF FIES END
         return res;
     }
@@ -177,7 +177,7 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     res = glue(glue(ld, LSUFFIX), _le_p)((uint8_t *)haddr);
 #endif
     uint64_t addr64 = addr;    
-    fault_injection_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
+    FIESER_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
     return res;
 }
 
@@ -187,7 +187,7 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
 {
 // CF FIES
     uint64_t addr64 = addr;
-    fault_injection_hook(env, (&addr64), NULL, FI_MEMORY_ADDR, read_access_type);
+    FIESER_hook(env, (&addr64), NULL, FI_MEMORY_ADDR, read_access_type);
     addr = addr64;
 // CF FIES END
 
@@ -224,7 +224,7 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
         res = glue(io_read, SUFFIX)(env, mmu_idx, index, addr, retaddr);
         res = TGT_BE(res);
 // CF FIES
-        fault_injection_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
+        FIESER_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
 // CF FIES END
         return res;
     }
@@ -246,7 +246,7 @@ WORD_TYPE helper_be_ld_name(CPUArchState *env, target_ulong addr,
         /* Big-endian combine.  */
         res = (res1 << shift) | (res2 >> ((DATA_SIZE * 8) - shift));
 // CF FIES
-        fault_injection_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
+        FIESER_hook(env, (&addr64), ((uint32_t*)&res), FI_MEMORY_CONTENT, read_access_type);
 // CF FIES END
         return res;
     }
@@ -292,7 +292,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 {
 // CF FIES
     uint64_t addr64 = addr;
-    fault_injection_hook(env, (&addr64), NULL, FI_MEMORY_ADDR, write_access_type);
+    FIESER_hook(env, (&addr64), NULL, FI_MEMORY_ADDR, write_access_type);
     addr = addr64;
 // CF FIES END
 
@@ -326,7 +326,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
            byte ordering.  We should push the LE/BE request down into io.  */
         val = TGT_LE(val);
 // CF FIES
-	fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
+	FIESER_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
         glue(io_write, SUFFIX)(env, mmu_idx, index, val, addr, retaddr);
         return;
@@ -359,7 +359,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
             uint8_t val8 = val >> (i * 8);
 // CF FIES
 	    hwaddr temp = addr + i;
-            fault_injection_hook(env, (&temp), ((uint32_t*)&val8), FI_MEMORY_CONTENT, write_access_type);
+            FIESER_hook(env, (&temp), ((uint32_t*)&val8), FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
             glue(helper_ret_stb, MMUSUFFIX)(env, addr + i, val8,
                                             oi, retaddr);
@@ -370,12 +370,12 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
 #if DATA_SIZE == 1
 // CF FIES
-    fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
+    FIESER_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
     glue(glue(st, SUFFIX), _p)((uint8_t *)haddr, val);
 #else
 // CF FIES
-    fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
+    FIESER_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
     glue(glue(st, SUFFIX), _le_p)((uint8_t *)haddr, val);
 #endif
@@ -387,7 +387,7 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 {
 // CF FIES
     uint64_t addr64 = addr;
-    fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_ADDR, write_access_type);
+    FIESER_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_ADDR, write_access_type);
 // CF FIES END
     unsigned mmu_idx = get_mmuidx(oi);
     int index = (addr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
@@ -419,7 +419,7 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
            byte ordering.  We should push the LE/BE request down into io.  */
         val = TGT_BE(val);
 // CF FIES
-	fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
+	FIESER_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
         glue(io_write, SUFFIX)(env, mmu_idx, index, val, addr, retaddr);
         return;
@@ -451,7 +451,7 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
             /* Big-endian extract.  */
             uint8_t val8 = val >> (((DATA_SIZE - 1) * 8) - (i * 8));
 // CF FIES
-	    fault_injection_hook(env, (&addr64), ((uint32_t*)&val8), FI_MEMORY_CONTENT, write_access_type);
+	    FIESER_hook(env, (&addr64), ((uint32_t*)&val8), FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
             glue(helper_ret_stb, MMUSUFFIX)(env, addr + i, val8,
                                             oi, retaddr);
@@ -461,7 +461,7 @@ void helper_be_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
 // CF FIES
-    fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
+    FIESER_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
 // CF FIES END
     glue(glue(st, SUFFIX), _be_p)((uint8_t *)haddr, val);
 }

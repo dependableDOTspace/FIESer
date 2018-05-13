@@ -792,7 +792,7 @@ static uint64_t io_readx(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     }
     // CF FIES
     uint64_t addr64 = addr;
-    fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
+    FIESER_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, read_access_type);
     // CF FIES END
 
     if (locked) {
@@ -822,7 +822,7 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
     
     // CF FIES
     uint64_t addr64 = addr;
-    fault_injection_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
+    FIESER_hook(env, (&addr64), ((uint32_t*)&val), FI_MEMORY_CONTENT, write_access_type);
     // CF FIES END
 
     if (mr->global_locking && !qemu_mutex_iothread_locked()) {

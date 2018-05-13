@@ -4136,7 +4136,7 @@ void monitor_init(Chardev *chr, int flags)
     qemu_mutex_lock(&monitor_lock);
     QLIST_INSERT_HEAD(&mon_list, mon, entry);
 // CF FIES
-    setMonitor(mon);
+    FIESER_setMonitor(mon);
 // CF FIES END
     qemu_mutex_unlock(&monitor_lock);
 }

@@ -355,57 +355,57 @@ static void validateXMLInput(void)
         }
 
         if (ptr->timer
-                && !ends_with(ptr->timer, "MS")
-                && !ends_with(ptr->timer, "US")
-                && !ends_with(ptr->timer, "NS"))
+                && !FIESER_helper_ends_with(ptr->timer, "MS")
+                && !FIESER_helper_ends_with(ptr->timer, "US")
+                && !FIESER_helper_ends_with(ptr->timer, "NS"))
         {
             fprintf(stderr, "timer has to be a positive, real number in ns, us or"
                     " ms (fault id: %d)\n", ptr->id);
         }
 
         if (ptr->timer
-                && (ends_with(ptr->timer, "MS")
-                || ends_with(ptr->timer, "US")
-                || ends_with(ptr->timer, "NS"))
-                && !timer_to_int(ptr->timer))
+                && (FIESER_helper_ends_with(ptr->timer, "MS")
+                || FIESER_helper_ends_with(ptr->timer, "US")
+                || FIESER_helper_ends_with(ptr->timer, "NS"))
+                && !FIESER_timer_to_int(ptr->timer))
         {
             fprintf(stderr, "timer has to be a positive, real number in ns, us or"
                     " ms (fault id: %d)\n", ptr->id);
         }
 
         if (ptr->duration
-                && !ends_with(ptr->duration, "MS")
-                && !ends_with(ptr->duration, "US")
-                && !ends_with(ptr->duration, "NS"))
+                && !FIESER_helper_ends_with(ptr->duration, "MS")
+                && !FIESER_helper_ends_with(ptr->duration, "US")
+                && !FIESER_helper_ends_with(ptr->duration, "NS"))
         {
             fprintf(stderr, "duration has to be a positive, real number in ns, us or"
                     " ms (fault id: %d)\n", ptr->id);
         }
 
         if (ptr->duration
-                && (ends_with(ptr->duration, "MS")
-                || ends_with(ptr->duration, "US")
-                || ends_with(ptr->duration, "NS"))
-                && !timer_to_int(ptr->duration))
+                && (FIESER_helper_ends_with(ptr->duration, "MS")
+                || FIESER_helper_ends_with(ptr->duration, "US")
+                || FIESER_helper_ends_with(ptr->duration, "NS"))
+                && !FIESER_timer_to_int(ptr->duration))
         {
             fprintf(stderr, "duration has to be a positive, real number in ns, us or"
                     " ms (fault id: %d)\n", ptr->id);
         }
 
         if (ptr->interval
-                && !ends_with(ptr->interval, "MS")
-                && !ends_with(ptr->interval, "US")
-                && !ends_with(ptr->interval, "NS"))
+                && !FIESER_helper_ends_with(ptr->interval, "MS")
+                && !FIESER_helper_ends_with(ptr->interval, "US")
+                && !FIESER_helper_ends_with(ptr->interval, "NS"))
         {
             fprintf(stderr, "interval has to be a positive, real number in ns, us or"
                     " ms (fault id: %d)\n", ptr->id);
         }
 
         if (ptr->interval
-                && (ends_with(ptr->interval, "MS")
-                || ends_with(ptr->interval, "US")
-                || ends_with(ptr->interval, "NS"))
-                && !timer_to_int(ptr->interval))
+                && (FIESER_helper_ends_with(ptr->interval, "MS")
+                || FIESER_helper_ends_with(ptr->interval, "US")
+                || FIESER_helper_ends_with(ptr->interval, "NS"))
+                && !FIESER_timer_to_int(ptr->interval))
         {
             fprintf(stderr, "interval has to be a positive, real number in ns, us or"
                     " ms (fault id: %d)\n", ptr->id);
@@ -578,7 +578,7 @@ static int parseFile(Monitor *mon, const char *filename)
         delete_fault_list();
 
     destroy_id_array();
-    destroy_ops_on_cell();
+    FIESER_helper_destroy_ops_on_cell();
 
     cur = cur->xmlChildrenNode;
     while (cur != NULL)
@@ -617,7 +617,7 @@ void qmp_fault_reload(Monitor *mon, const char *filename, Error **errp)
      * Starting new fault injection experiment -
      * reset timer and statistics
      */
-    fault_injection_controller_initTimer();
+    FIESER_timer_init();
     set_num_injected_faults(0);
     set_num_detected_faults(0);
     set_num_injected_faults_ram_trans(0);
@@ -643,7 +643,7 @@ void qmp_fault_reload(Monitor *mon, const char *filename, Error **errp)
      */
     max_id = getMaxIDInFaultList();
     init_id_array(max_id);
-    init_ops_on_cell(max_id);
+    FIESER_helper_init_ops_on_cell(max_id);
 
     xmlCleanupParser();
 }

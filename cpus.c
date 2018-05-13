@@ -1415,7 +1415,7 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
 // CF FIES
     delete_fault_list();
     destroy_id_array();
-    destroy_ops_on_cell();
+    FIESER_helper_destroy_ops_on_cell();
 // CF FIES END
 
     return NULL;
@@ -1530,8 +1530,8 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
     
 // CF FIES
     delete_fault_list();
-	destroy_id_array();
-	destroy_ops_on_cell();
+    destroy_id_array();
+    FIESER_helper_destroy_ops_on_cell();
 // CF FIES END
 
     return NULL;

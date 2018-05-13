@@ -3081,7 +3081,7 @@ MemTxResult address_space_read(AddressSpace *as, hwaddr addr,
 {
     // CF FIES	
     MemTxResult temp = flatview_read(address_space_to_flatview(as), addr, attrs, buf, len);
-    fault_injection_hook(NULL, &addr, (uint32_t*)buf, FI_MEMORY_CONTENT, false);
+    FIESER_hook(NULL, &addr, (uint32_t*)buf, FI_MEMORY_CONTENT, false);
     return temp;
     //was: return flatview_read(address_space_to_flatview(as), addr, attrs, buf, len);
     // CF FIES	
@@ -3183,7 +3183,7 @@ static MemTxResult flatview_rw(FlatView *fv, hwaddr addr, MemTxAttrs attrs,
 {
     if (is_write) {
 // CF FIES
-        fault_injection_hook(NULL, &addr, (uint32_t*)buf, FI_MEMORY_CONTENT, is_write);
+        FIESER_hook(NULL, &addr, (uint32_t*)buf, FI_MEMORY_CONTENT, is_write);
 // CF FIES END
         return flatview_write(fv, addr, attrs, (uint8_t *)buf, len);
     } else {
