@@ -6457,7 +6457,8 @@ case "$target_name" in
   arm|armeb)
     TARGET_ARCH=arm
     bflt="yes"
-    mttcg="yes"
+# FIESER currently does not support this!
+#    mttcg="yes"
     gdb_xml_files="arm-core.xml arm-vfp.xml arm-vfp3.xml arm-neon.xml"
   ;;
   aarch64)
