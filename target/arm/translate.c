@@ -12218,14 +12218,14 @@ static void arm_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     // CF FIES
     //FIES hook: instruction VALUE at current PC, but NOT the PC! (dc->pc*)
     //printf ("FIES: %s:%d hook instruction VALUE at pc=%x, Op=%x\r\n", __func__, __LINE__, dc->pc, insn);
-    profiler_debuglog("%s PC = %08x    ARM = %08x\n", __func__, dc->pc, insn);
+//    profiler_debuglog("%s PC = %08x    ARM = %08x\n", __func__, dc->pc, insn);
     
     hwaddr pc = dc->pc;
     FIESER_hook(env, &pc, &insn, FI_INSTRUCTION_VALUE_ARM, -1);
     dc->pc = pc;
     // CF FIES END
     }
-    profiler_debuglog("%s PC = %08x    ARM = %08x\n", __func__, dc->pc, insn);
+//    profiler_debuglog("%s PC = %08x    ARM = %08x\n", __func__, dc->pc, insn);
 
     //disassemble next instruction
     dc->insn = insn;
@@ -12341,7 +12341,7 @@ static void thumb_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     }
     dc->insn = insn;
     
-    profiler_debuglog("%s PC = %08x   THUMB = %08x\n", __func__, is_16bit? dc->pc-2 : dc->pc-4, insn);
+//    profiler_debuglog("%s PC = %08x   THUMB = %08x\n", __func__, is_16bit? dc->pc-2 : dc->pc-4, insn);
 
     if (dc->condexec_mask && !thumb_insn_is_unconditional(dc, insn)) {
         uint32_t cond = dc->condexec_cond;

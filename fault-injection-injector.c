@@ -1,6 +1,8 @@
 /*
  * fault-injection-injector.c
- *
+ * 
+ *  FIESer by Christian M. Fuchs 2017/2018
+ * 
  *  Created on: 17.08.2014
  *      Author: Gerhard Schoenfelder
  */

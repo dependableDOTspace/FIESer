@@ -1,8 +1,10 @@
 /*
  * fault-injection-controller.c
- *
+ * 
+ *  FIESer by Christian M. Fuchs 2017/2018
+ * 
  *  Created on: 17.08.2014
- *      Author: Gerhard Schoenfelder
+ *     Author: Gerhard Schoenfelder
  */
 #include "fault-injection-controller.h"
 #include "fault-injection-library.h"
@@ -1105,10 +1107,8 @@ static void FIESER_controller_insn(CPUArchState *env, hwaddr *addr, uint32_t *in
          * accessed address is not the defined fault address or the trigger is set to
          * time- or pc-triggering.
          */
-        profiler_debuglog("%s %08x  == %08x\n", __func__, fault->params.address, *addr);
         if (fault->params.address != *addr || strcmp(fault->trigger, "ACCESS"))
             continue;
-        profiler_debuglog("%s OK!\n", __func__);
 
         //printf("---------------------------HARTL3------------------------------------------\n");
 
@@ -1266,8 +1266,6 @@ static void FIESER_controller_pc_or_time(CPUArchState *env,
                 fprintf(stderr, "error: PC- or instruction-address not defined (fault id: %d)\n", fault->id);
                 continue;
             }
-
-            profiler_debuglog("%s got PC = %08x\nExpected Next PC = %08x", __func__, pc - 4, pc);
 
             FIESER_check_fault_trigger(fault, "cpu", pc);
             if (!fault->was_triggered)

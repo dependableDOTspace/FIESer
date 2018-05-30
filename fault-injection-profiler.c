@@ -1,6 +1,8 @@
 /*
  * fault-injection-profiler.c
- *
+ * 
+ *  FIESer by Christian M. Fuchs 2017/2018
+ * 
  *  Created on: 18.12.2015
  *      Author: Andrea Hoeller
  */

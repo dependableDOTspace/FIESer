@@ -1,6 +1,8 @@
 /*
  * fault-injection-data-analyzer.h
- *
+ * 
+ *  FIESer by Christian M. Fuchs 2017/2018
+ * 
  *  Created on: 07.08.2014
  *      Author: Gerhard Schoenfelder
  */

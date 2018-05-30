@@ -1,5 +1,7 @@
 /*
  * fault-injection-config.h
+ * 
+ *  FIESer by Christian M. Fuchs 2017/2018
  *
  *  Created on: 01.10.2014
  *      Author: Gerhard Schoenfelder
