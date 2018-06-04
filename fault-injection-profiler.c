@@ -5,8 +5,12 @@
  * 
  *  Created on: 18.12.2015
  *      Author: Andrea Hoeller
+ * 
+ * License: GNU GPL, version 2 or later.
+ *   See the COPYING file in the top-level directory.
  */
 
+#include "fault-injection-infrastructure.h"
 #include "fault-injection-profiler.h"
 
 int open_memory_addresses_file = 0;

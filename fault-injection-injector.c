@@ -5,8 +5,12 @@
  * 
  *  Created on: 17.08.2014
  *      Author: Gerhard Schoenfelder
+ * 
+ * License: GNU GPL, version 2 or later.
+ *   See the COPYING file in the top-level directory.
  */
 
+#include "fault-injection-infrastructure.h"
 #include "fault-injection-injector.h"
 #include "fault-injection-config.h"
 
@@ -193,13 +197,13 @@ void do_inject_look_up_error(CPUArchState *env, unsigned lockup_instruction, int
  * @param[in] new_flag_value - 0 for reseting, 1 for setting the condition flag
  */
 static void do_inject_condition_flags_arm(CPUARMState *env,
-                                          const char* src_flag_name,
+                                          enum FaultMode fault_mode,
                                           int new_flag_value)
 {
     if (new_flag_value != 0 && new_flag_value != 1)
         return;
 
-    if (!strcmp("CF", src_flag_name))
+    if (fault_mode == FI_MODE_CPSR_CF)
     {
         /* Carry flag */
         //env->CF = new_flag_value;
@@ -208,7 +212,7 @@ static void do_inject_condition_flags_arm(CPUARMState *env,
         else
             cpsr_write(env, 0, (1 << 29), CPSRWriteRaw);
     }
-    else if (!strcmp("NF", src_flag_name))
+    else if (fault_mode == FI_MODE_CPSR_NF)
     {
         /* Negative or Less than */
         //env->NF = new_flag_value;
@@ -217,7 +221,7 @@ static void do_inject_condition_flags_arm(CPUARMState *env,
         else
             cpsr_write(env, 0, (1 << 29), CPSRWriteRaw);
     }
-    else if (!strcmp("QF", src_flag_name))
+    else if (fault_mode == FI_MODE_CPSR_QF)
     {
         /* Sticky overflow */
         //env->QF = new_flag_value;
@@ -226,7 +230,7 @@ static void do_inject_condition_flags_arm(CPUARMState *env,
         else
             cpsr_write(env, 0, (1 << 27), CPSRWriteRaw);
     }
-    else if (!strcmp("VF", src_flag_name))
+    else if (fault_mode == FI_MODE_CPSR_VF)
     {
         /* Overflow */
         //env->VF = new_flag_value;
@@ -235,7 +239,7 @@ static void do_inject_condition_flags_arm(CPUARMState *env,
         else
             cpsr_write(env, 0, (1 << 28), CPSRWriteRaw);
     }
-    else if (!strcmp("ZF", src_flag_name))
+    else if (fault_mode == FI_MODE_CPSR_ZF)
     {
         /* Zero flag */
         //env->ZF = new_flag_value;
@@ -260,10 +264,10 @@ static void do_inject_condition_flags_arm(CPUARMState *env,
  * @param[in] new_flag_value - 0 for reseting, 1 for setting the condition flag
  */
 void do_inject_condition_flags(CPUArchState *env,
-                               const char* src_flag_name, int new_flag_value)
+                               enum FaultMode fault_mode, int new_flag_value)
 {
 #if defined(TARGET_ARM)
-    do_inject_condition_flags_arm(env, src_flag_name, new_flag_value);
+    do_inject_condition_flags_arm(env, fault_mode, new_flag_value);
 #else
 #error unsupported target CPU
 #endif

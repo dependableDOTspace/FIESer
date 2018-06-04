@@ -5,10 +5,15 @@
  * 
  *  Created on: 17.08.2014
  *      Author: Gerhard Schoenfelder
+ * 
+ * License: GNU GPL, version 2 or later.
+ *   See the COPYING file in the top-level directory.
  */
 
 #ifndef FAULT_INJECTION_INJECTOR_H_
 #define FAULT_INJECTION_INJECTOR_H_
+
+#include "fault-injection-infrastructure.h"
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
@@ -75,8 +80,7 @@ typedef struct {
  * see corresponding c-file for documentation
  */
 void do_inject_look_up_error(CPUArchState *env, unsigned lockup_instruction, int injection_length);
-void do_inject_condition_flags(CPUARMState *env, const char* src_flag_name,
-        int new_flag_value);
+void do_inject_condition_flags(CPUARMState *env, enum FaultMode fault_mode, int new_flag_value);
 void do_inject_insn(unsigned int *orig_insn, unsigned int repl_insn);
 void do_inject_memory_register(CPUArchState *env, hwaddr *addr, FaultInjectionInfo fi_info);
 
