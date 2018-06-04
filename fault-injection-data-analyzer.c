@@ -5,13 +5,16 @@
  * 
  *  Created on: 07.08.2014
  *      Author: Gerhard Schoenfelder
+ * 
+ * License: GNU GPL, version 2 or later.
+ *   See the COPYING file in the top-level directory.
  */
+#include "fault-injection-infrastructure.h"
 #include "fault-injection-data-analyzer.h"
 #include "fault-injection-controller.h"
 #include "fault-injection-config.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
+#include "fault-injection-library.h"
+
 
 /**
  * The variables for counting injected faults at different
@@ -43,7 +46,7 @@ static int *id_array;
  * for transient ram faults, cpu perm for permanent cpu faults or
  * reg trans  for transient register faults.
  */
-void incr_num_injected_faults(int id, const char* fault_type)
+void incr_num_injected_faults(int id, enum FaultComponent target, enum FaultType type)
 {
     id -= 1;
 
@@ -52,22 +55,30 @@ void incr_num_injected_faults(int id, const char* fault_type)
 
     num_injected_faults++;
 
-    if (!strcmp(fault_type, "ram trans"))
-        num_injected_faults_ram_trans++;
-    else if (!strcmp(fault_type, "ram perm"))
-        num_injected_faults_ram_perm++;
-    else if (!strcmp(fault_type, "cpu trans"))
-        num_injected_faults_cpu_trans++;
-    else if (!strcmp(fault_type, "cpu perm"))
-        num_injected_faults_cpu_perm++;
-    else if (!strcmp(fault_type, "reg trans"))
-        num_injected_faults_register_trans++;
-    else if (!strcmp(fault_type, "reg perm"))
-        num_injected_faults_register_perm++;
+    if (FI_COMP_CPU)
+    {
+        if (FI_TYPE_PERMANENT)
+            num_injected_faults_cpu_perm++;
+        else
+            num_injected_faults_cpu_trans++;
+    }
+    else if (FI_COMP_REGISTER)
+    {
+        if (FI_TYPE_PERMANENT)
+            num_injected_faults_register_perm++;
+        else
+            num_injected_faults_register_trans++;
+    }
+    else if (FI_COMP_RAM)
+    {
+        if (FI_TYPE_PERMANENT)
+            num_injected_faults_ram_perm++;
+        else
+            num_injected_faults_ram_trans++;
+    }
     else
     {
-        fprintf(stderr, "error: unknown fault type: %s\n", fault_type);
-        return;
+        assert(0);
     }
 
     id_array[id] = 1;

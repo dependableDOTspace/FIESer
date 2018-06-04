@@ -48,8 +48,9 @@
 #include <spice/enums.h>
 #endif
 
-#include "fault-injection-data-analyzer.h"
+#include "fault-injection-infrastructure.h"
 #include "fault-injection-library.h"
+#include "fault-injection-data-analyzer.h"
 #include "fault-injection-config.h"
 
 static void hmp_handle_error(Monitor *mon, Error **errp)
@@ -86,7 +87,7 @@ void hmp_info_version(Monitor *mon, const QDict *qdict)
 
 void hmp_fault_reload(Monitor *mon, const QDict *qdict)
 {
-	//error_report("HMP Fault reload...\n");
+    //error_report("HMP Fault reload...\n");
     const char *filename;
 
     if (qdict)

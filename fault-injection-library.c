@@ -5,8 +5,10 @@
  * 
  *  Created on: 07.08.2014
  *      Author: Gerhard Schoenfelder
+ * 
+ * License: GNU GPL, version 2 or later.
+ *   See the COPYING file in the top-level directory.
  */
-
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
@@ -14,12 +16,15 @@
 #include "qemu-common.h"
 #include "qemu/config-file.h"
 #include "monitor/monitor.h"
+
+#include "fault-injection-infrastructure.h"
 #include "fault-injection-library.h"
 #include "fault-injection-controller.h"
 #include "fault-injection-data-analyzer.h"
-#include <unistd.h>
-#include <libxml/xmlreader.h>
 #include "fault-injection-profiler.h"
+
+#include <libxml/xmlreader.h>
+
 /**
  * Linked list pointer to the first entry
  */
@@ -34,88 +39,67 @@ static FaultList *curr = NULL;
  */
 static int num_list_elements = 0;
 
-/**
- * Allocates the size for the first entry in the linked list and parses the elements to it.
- *
- * @param[in] fault - all necessary elements for defining a fault, which are held
- *                              by the struct "Fault"
- * @param[out] ptr - pointer to the linked list entry (added element)
- */
-static FaultList* create_fault_list(struct Fault *fault)
+#include "fault-injection-enums2string.h"
+
+const char * FaultComponent2STR(enum FaultComponent which)
 {
-    FaultList *ptr = (FaultList*) malloc(sizeof (struct Fault));
-    if (ptr == NULL)
-    {
-        fprintf(stderr, "Node creation failed\n");
-        return NULL;
-    }
+    return FaultComponent_STR[which];
+}
 
-    ptr->id = fault->id;
-    ptr->component = fault->component;
-    ptr->target = fault->target;
-    ptr->mode = fault->mode;
-    ptr->trigger = fault->trigger;
-    ptr->timer = fault->timer;
-    ptr->type = fault->type;
-    ptr->duration = fault->duration;
-    ptr->interval = fault->interval;
-    ptr->params.address = fault->params.address;
-    ptr->params.cf_address = fault->params.cf_address;
-    ptr->params.mask = fault->params.mask;
-    ptr->params.instruction = fault->params.instruction;
-    ptr->params.set_bit = fault->params.set_bit;
-    ptr->was_triggered = 0;
-    ptr->next = NULL;
+const char * FaultTarget2STR(enum FaultTarget which)
+{
+    return FaultTarget_STR[which];
+}
 
-    head = curr = ptr;
+const char * FaultMode2STR(enum FaultMode which)
+{
+    return FaultMode_STR[which];
+}
 
-    num_list_elements++;
+const char * FaultTrigger2STR(enum FaultTrigger which)
+{
+    return FaultTrigger_STR[which];
+}
 
-    return ptr;
+const char * FaultType2STR(enum FaultType which)
+{
+    return FaultType_STR[which];
 }
 
 /**
  * Allocates the size for a new entry in the linked list and parses the elements to it.
  *
+ * @param[in] mon - monitor handle for error logging
+ * 
  * @param[in] fault - all necessary elements for defining a fault, which are held
  *                              by the struct "Fault"
  * @param[out] ptr - pointer to the linked list entry (added element)
  */
-static FaultList* add_to_fault_list(struct Fault *fault)
+static FaultList* add_to_fault_list(FaultList *fault_to_add)
 {
-    if (head == NULL)
-        return create_fault_list(fault);
 
-    FaultList *ptr = (FaultList*) malloc(sizeof (struct Fault));
-    if (NULL == ptr)
+    FaultList *fault = (FaultList*) malloc(sizeof (FaultList));
+    if (!fault)
     {
-        fprintf(stderr, "Node creation failed\n");
+        qemu_log("Node creation failed\n");
         return NULL;
     }
 
-    ptr->id = fault->id;
-    ptr->component = fault->component;
-    ptr->target = fault->target;
-    ptr->mode = fault->mode;
-    ptr->trigger = fault->trigger;
-    ptr->timer = fault->timer;
-    ptr->type = fault->type;
-    ptr->duration = fault->duration;
-    ptr->interval = fault->interval;
-    ptr->params.address = fault->params.address;
-    ptr->params.cf_address = fault->params.cf_address;
-    ptr->params.mask = fault->params.mask;
-    ptr->params.instruction = fault->params.instruction;
-    ptr->params.set_bit = fault->params.set_bit;
-    ptr->was_triggered = 0;
-    ptr->next = NULL;
+    *fault = *fault_to_add;
 
-    curr->next = ptr;
-    curr = ptr;
+    fault->was_triggered = 0;
+    fault->next = NULL;
+
+    if (head == NULL)
+        head = fault;
+    else
+        curr->next = fault;
+
+    curr = fault;
 
     num_list_elements++;
 
-    return ptr;
+    return curr;
 }
 
 #if defined(DEBUG_FAULT_LIST)
@@ -230,263 +214,521 @@ int getMaxIDInFaultList(void)
  * for correctness. IMPORTANT: it does not check, if all necessary parameters
  * are defined.
  */
-static void validateXMLInput(void)
+static int validateFaultList(void)
 {
-    FaultList *ptr = head;
+    int ret = true;
+    FaultList *fault = head;
+    char msg_template[] = "fault id %d semantic error: %s\n";
 
-    while (ptr != NULL)
+    while (fault != NULL)
     {
-        if (!ptr->id || ptr->id == -1)
+        if (!fault->component)
         {
-            fprintf(stderr, "fault id is not a positive, real number\n");
+            qemu_log(msg_template, fault->id, "<component> not defined");
+            ret = false;
+        }
+        if (!fault->target)
+        {
+            qemu_log(msg_template, fault->id, "<target> not defined");
+            ret = false;
+        }
+        if (!fault->mode)
+        {
+            qemu_log(msg_template, fault->id, "<mode> not defined");
+            ret = false;
+        }
+        if (!fault->params.address_defined)
+        {
+            // we almost always need the address field as trigger for access of PC or the victim address.
+            if (fault->target == FI_TAGT_CONDITION_FLAGS && fault->trigger == FI_TRGR_TIME)
+            {
+                // exception: it is possible to trigger CPSR faults based on time-only, then we don't have an address field
+            }
+            else
+            {
+                qemu_log(msg_template, fault->id, "<address> not defined");
+                ret = false;
+            }
         }
 
-        if (!ptr->component || !ptr->target || !ptr->mode)
+
+        if (fault->component == FI_COMP_CPU)
         {
-            fprintf(stderr, "component, target or mode is not defined (fault id: %d)\n", ptr->id);
+            // PC at which to trigger is in <address>
+            switch (fault->target)
+            {
+            case FI_TAGT_INSTRUCTION_DECODER:
+                // new opcode for replacement is in <struction>
+                if (fault->mode != FI_MODE_NEW_VALUE)
+                {
+                    //TODO CF: this is a non-sensical limitation of FIES, should allow bit-flips too!
+                    qemu_log(msg_template, fault->id, "wrong fault mode selected, <target> is INSTRUCTION DECODER supporting only NEW VALUE");
+                    ret = false;
+                }
+                if (!fault->params.instruction_defined)
+                {
+                    qemu_log(msg_template, fault->id, "<target> is INSTRUCTION DECODER but <instruction> for replacing the value not defined");
+                    ret = false;
+                }
+            case FI_TAGT_INSTRUCTION_EXECUTION:
+                // replaces the opcode at PC simply with a NOP-equivalent, or two in case the instruction was 32bit Thumb
+                break;
+            case FI_TAGT_CONDITION_FLAGS:
+                switch (fault->mode)
+                {
+                case FI_MODE_CPSR_CF:
+                case FI_MODE_CPSR_VF:
+                case FI_MODE_CPSR_ZF:
+                case FI_MODE_CPSR_NF:
+                case FI_MODE_CPSR_QF:
+                    break;
+                default:
+                    qemu_log(msg_template, fault->id, "<target> is CONDITION FLAGS, mode can only be VF, ZF, CF, NF, QF.");
+                    ret = false;
+                }
+
+                // which flag to flip is stored in set_bit
+                if (!fault->params.set_bit_defined)
+                {
+                    qemu_log(msg_template, fault->id, "target is CONDITION FLAGS but <set_bit> mask for CPSR not defined");
+                    ret = false;
+                }
+                break;
+            default:
+                qemu_log(msg_template, fault->id, "<component> CPU only supports targets INSTRUCTION DECODER, INSTRUCTION EXECUTION, or CONDITION FLAGS");
+                ret = false;
+            }
         }
 
-        if (ptr->component
-                && strcmp(ptr->component, "CPU")
-                && strcmp(ptr->component, "RAM")
-                && strcmp(ptr->component, "REGISTER"))
+
+
+        else if (fault->component == FI_COMP_RAM)
         {
-            fprintf(stderr, "component has to be \"CPU, REGISTER or RAM\" (fault id: %d)\n", ptr->id);
+
+            switch (fault->target)
+            {
+            case FI_TAGT_MEMORY_CELL:
+            case FI_TAGT_ADDRESS_DECODER:
+                /**
+                 * faults are triggered using the address variable, 
+                 * so instruction contains the address/regnum of the victim
+                 */
+                if (!fault->params.instruction_defined && (fault->trigger == FI_TRGR_PC || fault->trigger == FI_TRGR_TIME))
+                {
+                    qemu_log(msg_template, fault->id, "target is RAM, trigger is PC or TIME, expected victim address in <instruction> as trigger uses <address>");
+                    ret = false;
+                }
+                break;
+            case FI_TAGT_RW_LOGIC:
+                break;
+            default:
+                qemu_log(msg_template, fault->id, "<component> RAM only supports targets MEMORY CELL, ADDRESS DECODER, R/W LOGIC");
+                ret = false;
+            }
+
+            switch (fault->mode)
+            {
+            case FI_MODE_NEW_VALUE:
+            case FI_MODE_BITFLIP:
+            case FI_MODE_STATE_FAULT:
+                break;
+            default:
+                qemu_log(msg_template, fault->id, "<component> RAM only supports modes NEW VALUE, SF, BIT-FLIP");
+                ret = false;
+            }
         }
 
-        if (ptr->target
-                && strcmp(ptr->target, "REGISTER CELL")
-                && strcmp(ptr->target, "MEMORY CELL")
-                && strcmp(ptr->target, "CONDITION FLAGS")
-                && strcmp(ptr->target, "INSTRUCTION EXECUTION")
-                && strcmp(ptr->target, "INSTRUCTION DECODER")
-                && strcmp(ptr->target, "ADDRESS DECODER")
-                && strcmp(ptr->target, "PRINT ADDRESSES TO FILE"))
+
+
+
+
+        else if (fault->component == FI_COMP_REGISTER)
         {
-            fprintf(stderr, "target has to be \"REGISTER CELL, MEMORY CELL, "
-                    "CONDITION FLAGS, INSTRUCTION EXECUTION, INSTRUCTION DECODER, "
-                    "or ADDRESS DECODER\" (fault id: %d)\n", ptr->id);
+
+            switch (fault->target)
+            {
+            case FI_TAGT_REGISTER_CELL:
+                /**
+                 * faults are triggered using the address variable, 
+                 * so instruction contains the address/regnum of the victim
+                 */
+                if (!fault->params.instruction_defined && (fault->trigger == FI_TRGR_PC || fault->trigger == FI_TRGR_TIME))
+                {
+                    qemu_log(msg_template, fault->id, "target is REGISTER CELL, trigger is PC or TIME, expected victim address in <instruction> as trigger uses <address>");
+                    ret = false;
+                }
+                break;
+            case FI_TAGT_ADDRESS_DECODER:
+                break;
+            default:
+                qemu_log(msg_template, fault->id, "<component> REGISTER only supports targets MEMORY CELL, ADDRESS DECODER");
+                ret = false;
+            }
+
+            switch (fault->mode)
+            {
+            case FI_MODE_NEW_VALUE:
+            case FI_MODE_BITFLIP:
+            case FI_MODE_STATE_FAULT:
+                break;
+            default:
+                qemu_log(msg_template, fault->id, "<component> RAM only supports modes NEW VALUE, SF, BIT-FLIP");
+                ret = false;
+            }
+        }
+        else
+        {
+            qemu_log(msg_template, fault->id, "<component> has to be CPU, RAM, REGISTER");
+            ret = false;
         }
 
-        if (ptr->target && !strcmp(ptr->target, "PRINT ADDRESSES TO FILE"))
+        if (fault->mode == FI_MODE_BITFLIP)
         {
-            profile_ram_addresses = 1;
+            if (!fault->params.mask_defined)
+            {
+                qemu_log(msg_template, fault->id, "<mode> BIT-FLIP requires <mask> containing a bitmask indicating for which bits to flip in the target.");
+                ret = false;
+            }
+        }
+        else if (fault->mode == FI_MODE_NEW_VALUE)
+        {
+            if (!fault->params.mask_defined && fault->component != FI_COMP_CPU)
+            {
+                qemu_log(msg_template, fault->id, "<mode> NEW VALUE requires <mask> containing a the new value to be inserted. Kind of stupid to re-use mask for it, instead of inflating the fault struct with sacrificing one more integer... no?");
+                ret = false;
+            }
+        }
+        else if (fault->mode == FI_MODE_STATE_FAULT)
+        {
+            if (!fault->params.mask_defined)
+            {
+                qemu_log(msg_template, fault->id, "<mode> SF (state faults) requires <mask> containing a bitmask indicating for which bits to flip in CPSR.");
+                ret = false;
+            }
+
+            if (!fault->params.set_bit_defined)
+            {
+                qemu_log(msg_template, fault->id, "<mode> SF (state faults) requires <set_bit> containing a bitmask indicating if the flag should be set or unset.");
+                ret = false;
+            }
         }
 
-        if (ptr->mode
-                && strcmp(ptr->mode, "NEW VALUE")
-                && strcmp(ptr->mode, "ZF") && strcmp(ptr->mode, "CF")
-                && strcmp(ptr->mode, "NF") && strcmp(ptr->mode, "QF")
-                && strcmp(ptr->mode, "VF") && strcmp(ptr->mode, "SF")
-                && strcmp(ptr->mode, "BIT-FLIP") && strcmp(ptr->mode, "VF")
-                && strcmp(ptr->mode, "TF0") && strcmp(ptr->mode, "TF1")
-                && strcmp(ptr->mode, "WDF0") && strcmp(ptr->mode, "WDF1")
-                && strcmp(ptr->mode, "RDF0") && strcmp(ptr->mode, "RDF1")
-                && strcmp(ptr->mode, "IRF0") && strcmp(ptr->mode, "IRF1")
-                && strcmp(ptr->mode, "DRDF0") && strcmp(ptr->mode, "DRDF1")
-                && strcmp(ptr->mode, "RDF00") && strcmp(ptr->mode, "RDF01")
-                && strcmp(ptr->mode, "RDF10") && strcmp(ptr->mode, "RDF11")
-                && strcmp(ptr->mode, "IRF00") && strcmp(ptr->mode, "IRF01")
-                && strcmp(ptr->mode, "IRF10") && strcmp(ptr->mode, "IRF11")
-                && strcmp(ptr->mode, "DRDF00") && strcmp(ptr->mode, "DRDF01")
-                && strcmp(ptr->mode, "DRDF10") && strcmp(ptr->mode, "DRDF11")
-                && strcmp(ptr->mode, "CFST00") && strcmp(ptr->mode, "CFST01")
-                && strcmp(ptr->mode, "CFST10") && strcmp(ptr->mode, "CFST11")
-                && strcmp(ptr->mode, "CFTR00") && strcmp(ptr->mode, "CFTR01")
-                && strcmp(ptr->mode, "CFTR10") && strcmp(ptr->mode, "CFTR11")
-                && strcmp(ptr->mode, "CFWD00") && strcmp(ptr->mode, "CFWD01")
-                && strcmp(ptr->mode, "CFWD10") && strcmp(ptr->mode, "CFWD11")
-                && strcmp(ptr->mode, "CFRD00") && strcmp(ptr->mode, "CFRD01")
-                && strcmp(ptr->mode, "CFRD10") && strcmp(ptr->mode, "CFRD11")
-                && strcmp(ptr->mode, "CFIR00") && strcmp(ptr->mode, "CFIR01")
-                && strcmp(ptr->mode, "CFIR10") && strcmp(ptr->mode, "CFIR11")
-                && strcmp(ptr->mode, "CFDR00") && strcmp(ptr->mode, "CFDR01")
-                && strcmp(ptr->mode, "CFDR10") && strcmp(ptr->mode, "CFDR11")
-                && strcmp(ptr->mode, "CFDS0W00") && strcmp(ptr->mode, "CFDS0W01")
-                && strcmp(ptr->mode, "CFDS0W10") && strcmp(ptr->mode, "CFDS0W11")
-                && strcmp(ptr->mode, "CFDS1W00") && strcmp(ptr->mode, "CFDS1W01")
-                && strcmp(ptr->mode, "CFDS1W10") && strcmp(ptr->mode, "CFDS1W11")
-                && strcmp(ptr->mode, "CFDS0R00") && strcmp(ptr->mode, "CFDS0R01")
-                && strcmp(ptr->mode, "CFDS1R10") && strcmp(ptr->mode, "CFDS1R11"))
+        if (fault->trigger == FI_TRGR_TIME || (fault->trigger == FI_TRGR_ACCESS && fault->component != FI_COMP_CPU))
         {
-            fprintf(stderr, "unknown mode (fault id: %d)\n", ptr->id);
+
+            switch (fault->type)
+            {
+            case FI_TYPE_INTERMITTENT:
+                if (fault->interval < 0)
+                {
+                    qemu_log(msg_template, fault->id, "<type> is INTERMITTENT and requires <interval>");
+                    ret = false;
+                }
+            case FI_TYPE_TRANSIENT:
+                if (fault->timer < 0)
+                {
+                    qemu_log(msg_template, fault->id, "<type> is TRANSIENT or INTERMITTENT and requires <timer> as start time after which the fault should come into effect. This can be 0 to not initial delay.");
+                    ret = false;
+                }
+                if (fault->duration < 0)
+                {
+                    qemu_log(msg_template, fault->id, "<type> is TRANSIENT or INTERMITTENT and requires <duration> as absolute STOP time after which the fault should stop being in effect. This is NOT the duration, but rather a fixed point in time unrelated to the start timer. The original FIES devs just called it like that... sigh...");
+                    ret = false;
+                }
+            case FI_TYPE_PERMANENT:
+                // permanent fault activated upon first access
+                break;
+            default:
+                qemu_log(msg_template, fault->id, "<trigger> is TIME or ACCESS, and requires <type> to be set to TRANSIENT, PERMANENT, INTERMITTEND");
+                ret = false;
+            }
         }
 
-        if (ptr->trigger
-                && strcmp(ptr->trigger, "ACCESS")
-                && strcmp(ptr->trigger, "TIME")
-                && strcmp(ptr->trigger, "PC"))
-        {
-            fprintf(stderr, "trigger has to be \"ACCESS, TIME or PC\" (fault id: %d)\n", ptr->id);
-        }
-
-        if (!ptr->params.address)
-        {
-            fprintf(stderr, "fault address is not a number (fault id: %d)\n", ptr->id);
-        }
-
-        if (!ptr->params.cf_address)
-        {
-            fprintf(stderr, "fault coupling address is not a number (fault id: %d)\n", ptr->id);
-        }
-
-        if (!ptr->params.instruction)
-        {
-            fprintf(stderr, "fault instruction address is not a number (fault id: %d)\n", ptr->id);
-        }
-
-        if (!ptr->params.mask)
-        {
-            fprintf(stderr, "fault mask is not a number (fault id: %d)\n", ptr->id);
-        }
-
-        if (ptr->trigger && (!strcmp(ptr->trigger, "TIME") || !strcmp(ptr->trigger, "ACCESS"))
-                && ptr->type && strcmp(ptr->type, "PERMANENT")
-                && strcmp(ptr->type, "TRANSIENT")
-                && strcmp(ptr->type, "INTERMITTEND"))
-        {
-            fprintf(stderr, "type has to be \"PERMANENT, TRANSIENT or "
-                    "INTERMITTEND\" for time- or access-triggered faults (fault id: %d)\n", ptr->id);
-        }
-
-        if (ptr->trigger && !strcmp(ptr->trigger, "PC")
-                && (ptr->params.address == -1 || !ptr->params.address))
-        {
-            fprintf(stderr, "PC-address has to be defined in the <params>->"
-                    "<instruction>-tag or has  to be a positive, real number (fault id: %d)\n", ptr->id);
-        }
-
-        if (ptr->timer
-                && !FIESER_helper_ends_with(ptr->timer, "MS")
-                && !FIESER_helper_ends_with(ptr->timer, "US")
-                && !FIESER_helper_ends_with(ptr->timer, "NS"))
-        {
-            fprintf(stderr, "timer has to be a positive, real number in ns, us or"
-                    " ms (fault id: %d)\n", ptr->id);
-        }
-
-        if (ptr->timer
-                && (FIESER_helper_ends_with(ptr->timer, "MS")
-                || FIESER_helper_ends_with(ptr->timer, "US")
-                || FIESER_helper_ends_with(ptr->timer, "NS"))
-                && !FIESER_timer_to_int(ptr->timer))
-        {
-            fprintf(stderr, "timer has to be a positive, real number in ns, us or"
-                    " ms (fault id: %d)\n", ptr->id);
-        }
-
-        if (ptr->duration
-                && !FIESER_helper_ends_with(ptr->duration, "MS")
-                && !FIESER_helper_ends_with(ptr->duration, "US")
-                && !FIESER_helper_ends_with(ptr->duration, "NS"))
-        {
-            fprintf(stderr, "duration has to be a positive, real number in ns, us or"
-                    " ms (fault id: %d)\n", ptr->id);
-        }
-
-        if (ptr->duration
-                && (FIESER_helper_ends_with(ptr->duration, "MS")
-                || FIESER_helper_ends_with(ptr->duration, "US")
-                || FIESER_helper_ends_with(ptr->duration, "NS"))
-                && !FIESER_timer_to_int(ptr->duration))
-        {
-            fprintf(stderr, "duration has to be a positive, real number in ns, us or"
-                    " ms (fault id: %d)\n", ptr->id);
-        }
-
-        if (ptr->interval
-                && !FIESER_helper_ends_with(ptr->interval, "MS")
-                && !FIESER_helper_ends_with(ptr->interval, "US")
-                && !FIESER_helper_ends_with(ptr->interval, "NS"))
-        {
-            fprintf(stderr, "interval has to be a positive, real number in ns, us or"
-                    " ms (fault id: %d)\n", ptr->id);
-        }
-
-        if (ptr->interval
-                && (FIESER_helper_ends_with(ptr->interval, "MS")
-                || FIESER_helper_ends_with(ptr->interval, "US")
-                || FIESER_helper_ends_with(ptr->interval, "NS"))
-                && !FIESER_timer_to_int(ptr->interval))
-        {
-            fprintf(stderr, "interval has to be a positive, real number in ns, us or"
-                    " ms (fault id: %d)\n", ptr->id);
-        }
-
-        ptr = ptr->next;
+        fault = fault->next;
     }
+    return ret;
 }
 
 #ifdef LIBXML_READER_ENABLED
 
 /**
  * Parses the fault parameters from the XML file.
- *
+ * 
+ * @param[in] mon - monitor handle for error logging
+ * 
  * @param[in] doc - A structure containing the tree created by a parsed
  *                            doc.
  * @param[in] cur - A structure containing a single node.
+ * 
+ * @return[out] success, true or false
  */
-static void parseFault(xmlDocPtr doc, xmlNodePtr cur)
+static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
 {
-    xmlChar *key = NULL;
+    char *key = NULL;
     xmlNodePtr grandchild_node;
-    FaultList fault = {-1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0,{-1, -1, -1, -1, -1}, NULL};
+    FaultList fault;
+
+    fault.id = -1;
+    fault.component = FI_UNDEF;
+    fault.target = FI_UNDEF;
+    fault.mode = FI_UNDEF;
+    fault.trigger = FI_UNDEF;
+    fault.type = FI_UNDEF;
+    fault.timer = -1;
+    fault.duration = -1;
+    fault.interval = -1;
+    fault.params.address = 0;
+    fault.params.address_defined = FI_UNDEF;
+    fault.params.cf_address = 0;
+    fault.params.cf_address_defined = FI_UNDEF;
+    fault.params.mask = 0;
+    fault.params.mask_defined = FI_UNDEF;
+    fault.params.instruction = 0;
+    fault.params.instruction_defined = FI_UNDEF;
+    fault.params.set_bit = 0;
+    fault.params.set_bit_defined = FI_UNDEF;
+    fault.was_triggered = 0;
+    fault.next = NULL;
+
+    int ret = true;
 
     cur = cur->xmlChildrenNode;
     while (cur != NULL)
     {
         if (!xmlStrcmp(cur->name, (const xmlChar *) "id"))
         {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.id = (int) strtol((char *) key, NULL, 10);
+            long int id;
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+            id = strtol((char *) key, NULL, 10);
+
+            //TODO CF: rework how IDs are used today, this is really wonky and also the above mentioned stuff makes little sense
+            // by spec, strtol would also notify out of range errors with ((id == LONG_MAX || id == LONG_MIN) && errno == ERANGE), but the above covers that too.
+            fault.id = (id < 1 || id > INT_MAX) ? 0 : (int) id;
+
+            // not allowing 0 is wired, but currently necessary due to old 
+            // legacy code from FIES deep down in how transient faults are 
+            // handled in an array where we use the ID-1 as [index] 
+            // to track set faults
+
+            if (!fault.id)
+            {
+                ret = false;
+                qemu_log("fault ENTRY %d: id '%s' is not an integer > 0\n", num_list_elements, key);
+            }
+
             xmlFree(key);
         }
         else if (!xmlStrcmp(cur->name, (const xmlChar *) "component"))
         {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.component = strdup((char *) key);
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+
+            if (!strcmp(key, "CPU"))
+            {
+                fault.component = FI_COMP_CPU;
+            }
+            else if (!strcmp(key, "RAM"))
+            {
+                fault.component = FI_COMP_RAM;
+            }
+            else if (!strcmp(key, "REGISTER"))
+            {
+                fault.component = FI_COMP_REGISTER;
+            }
+            else
+            {
+                ret = false;
+                qemu_log("fault %d syntax error: <component> has to be \"CPU, REGISTER or RAM\", was %s\n", fault.id, key);
+            }
             xmlFree(key);
         }
         else if (!xmlStrcmp(cur->name, (const xmlChar *) "target"))
         {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.target = strdup((char *) key);
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+
+            if (!strcmp(key, "REGISTER CELL"))
+            {
+                fault.target = FI_TAGT_REGISTER_CELL;
+            }
+            else if (!strcmp(key, "MEMORY CELL"))
+            {
+                fault.target = FI_TAGT_MEMORY_CELL;
+            }
+            else if (!strcmp(key, "CONDITION FLAGS"))
+            {
+                fault.target = FI_TAGT_CONDITION_FLAGS;
+            }
+            else if (!strcmp(key, "INSTRUCTION EXECUTION"))
+            {
+                fault.target = FI_TAGT_INSTRUCTION_EXECUTION;
+            }
+            else if (!strcmp(key, "INSTRUCTION DECODER"))
+            {
+                fault.target = FI_TAGT_INSTRUCTION_DECODER;
+            }
+            else if (!strcmp(key, "ADDRESS DECODER"))
+            {
+                fault.target = FI_TAGT_ADDRESS_DECODER;
+            }
+            else if (!strcmp(key, "RW LOGIC"))
+            {
+                fault.target = FI_TAGT_RW_LOGIC;
+            }
+            else if (!strcmp(key, "TRACE MEMORY"))
+            {
+                fault.target = FI_TAGT_TRACE_MEMORY;
+                profile_ram_addresses = 1;
+            }
+            else if (!strcmp(key, "TRACE REGISTERS"))
+            {
+                fault.target = FI_TAGT_TRACE_REGISTERS;
+                profile_registers = 1;
+            }
+            else if (!strcmp(key, "TRACE PC"))
+            {
+                fault.target = FI_TAGT_TRACE_PC;
+                profile_pc_status = 1;
+            }
+            else if (!strcmp(key, "TRACE CPSR"))
+            {
+                fault.target = FI_TAGT_TRACE_CPSR;
+                profile_condition_flags = 1;
+            }
+            else
+            {
+                ret = false;
+                qemu_log("fault %d syntax error: <target> has to be \"REGISTER CELL, MEMORY CELL, "
+                         "CONDITION FLAGS, INSTRUCTION EXECUTION, INSTRUCTION DECODER, "
+                         "ADDRESS DECODER, FI_TAGT_RW_LOGIC, TRACE MEM ACCESS/REGISTERS/PC/CPSR\", was %s\n", fault.id, key);
+            }
             xmlFree(key);
         }
         else if (!xmlStrcmp(cur->name, (const xmlChar *) "mode"))
         {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.mode = strdup((char *) key);
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+
+            if (!strcmp(key, "NEW VALUE"))
+            {
+                fault.mode = FI_MODE_NEW_VALUE;
+            }
+            else if (!strcmp(key, "BITFLIP"))
+            {
+                fault.mode = FI_MODE_BITFLIP;
+            }
+            else if (!strcmp(key, "STATE FAULT"))
+            {
+                fault.mode = FI_MODE_STATE_FAULT;
+            }
+            else if (!strcmp(key, "CPSR CF"))
+            {
+                fault.mode = FI_MODE_CPSR_CF;
+            }
+            else if (!strcmp(key, "CPSR VF"))
+            {
+                fault.mode = FI_MODE_CPSR_VF;
+            }
+            else if (!strcmp(key, "CPSR ZF"))
+            {
+                fault.mode = FI_MODE_CPSR_ZF;
+            }
+            else if (!strcmp(key, "CPSR NF"))
+            {
+                fault.mode = FI_MODE_CPSR_NF;
+            }
+            else if (!strcmp(key, "CPSR QF"))
+            {
+                fault.mode = FI_MODE_CPSR_QF;
+            }
+            else
+            {
+                ret = false;
+                qemu_log("fault %d syntax error: <mode> not recognized: %s\n", fault.id, key);
+            }
             xmlFree(key);
         }
         else if (!xmlStrcmp(cur->name, (const xmlChar *) "trigger"))
         {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.trigger = strdup((char *) key);
-            xmlFree(key);
-        }
-        else if (!xmlStrcmp(cur->name, (const xmlChar *) "timer"))
-        {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.timer = strdup((char *) key);
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+
+            if (!strcmp(key, "ACCESS"))
+            {
+                fault.trigger = FI_TRGR_ACCESS;
+            }
+            else if (!strcmp(key, "TIME"))
+            {
+                fault.trigger = FI_TRGR_TIME;
+            }
+            else if (!strcmp(key, "PC"))
+            {
+                fault.trigger = FI_TRGR_PC;
+            }
+            else
+            {
+                ret = false;
+                qemu_log("fault %d syntax error: <trigger> has to be \"ACCESS, TIME or PC\", was %s\n", fault.id, key);
+            }
             xmlFree(key);
         }
         else if (!xmlStrcmp(cur->name, (const xmlChar *) "type"))
         {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.type = strdup((char *) key);
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+
+            if (!strcmp(key, "TRANSIENT"))
+            {
+                fault.type = FI_TYPE_TRANSIENT;
+            }
+            else if (!strcmp(key, "PERMANENT"))
+            {
+                fault.type = FI_TYPE_PERMANENT;
+            }
+            else if (!strcmp(key, "INTERMITTENT"))
+            {
+                fault.type = FI_TYPE_INTERMITTENT;
+            }
+            else
+            {
+                ret = false;
+                qemu_log("fault %d syntax error: <type> has to be \"TRANSIENT, PERMANENT or INTERMITTENT\", was %s\n", fault.id, key);
+            }
+            xmlFree(key);
+        }
+        else if (!xmlStrcmp(cur->name, (const xmlChar *) "timer"))
+        {
+            int ok = true;
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+            fault.timer = FIESER_normalize_time_to_int64(key, &ok);
+
+            if (!ok)
+            {
+                ret = false;
+                qemu_log("fault %d syntax error: <timer> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
+            }
+
             xmlFree(key);
         }
         else if (!xmlStrcmp(cur->name, (const xmlChar *) "duration"))
         {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.duration = strdup((char *) key);
+            int ok = true;
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+            fault.duration = FIESER_normalize_time_to_int64(key, &ok);
+
+            if (!ok)
+            {
+                ret = false;
+                qemu_log("fault %d syntax error: <duration> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
+            }
             xmlFree(key);
         }
         else if (!xmlStrcmp(cur->name, (const xmlChar *) "interval"))
         {
-            key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
-            fault.interval = strdup((char *) key);
+            int ok = true;
+            key = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+            fault.interval = FIESER_normalize_time_to_int64(key, &ok);
+
+            if (!ok)
+            {
+                ret = false;
+                qemu_log("fault %d syntax error: <interval> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
+            }
             xmlFree(key);
         }
         else if (!xmlStrcmp(cur->name, (const xmlChar *) "params"))
@@ -496,37 +738,52 @@ static void parseFault(xmlDocPtr doc, xmlNodePtr cur)
             {
                 if (!xmlStrcmp(grandchild_node->name, (const xmlChar *) "address"))
                 {
-                    key = xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
+                    key = (char *) xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
                     fault.params.address = (int) strtoul((char *) key, NULL, 16);
+                    fault.params.address_defined = true;
                     xmlFree(key);
                 }
-                if (!xmlStrcmp(grandchild_node->name, (const xmlChar *) "cf_address"))
+                else if (!xmlStrcmp(grandchild_node->name, (const xmlChar *) "cf_address"))
                 {
-                    key = xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
+                    key = (char *) xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
                     fault.params.cf_address = (int) strtoul((char *) key, NULL, 16);
+                    fault.params.cf_address_defined = true;
                     xmlFree(key);
                 }
                 else if (!xmlStrcmp(grandchild_node->name, (const xmlChar *) "mask"))
                 {
-                    key = xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
+                    key = (char *) xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
                     fault.params.mask = (int) strtol((char *) key, NULL, 16);
+                    fault.params.mask_defined = true;
                     xmlFree(key);
                 }
-                if (!xmlStrcmp(grandchild_node->name, (const xmlChar *) "instruction"))
+                else if (!xmlStrcmp(grandchild_node->name, (const xmlChar *) "instruction"))
                 {
-                    key = xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
+                    key = (char *) xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
                     fault.params.instruction = (int) strtoul((char *) key, NULL, 16);
+                    fault.params.instruction_defined = true;
                     xmlFree(key);
                 }
-                if (!xmlStrcmp(grandchild_node->name, (const xmlChar *) "set_bit"))
+                else if (!xmlStrcmp(grandchild_node->name, (const xmlChar *) "set_bit"))
                 {
-                    key = xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
+                    key = (char *) xmlNodeListGetString(doc, grandchild_node->xmlChildrenNode, 1);
                     fault.params.set_bit = (int) strtol((char *) key, NULL, 16);
+                    fault.params.set_bit_defined = true;
                     xmlFree(key);
+                }
+                else if (grandchild_node->type != XML_TEXT_NODE)
+                {
+                    qemu_log("fault ENTRY %d syntax error in <param>: unknown element %s\n", num_list_elements, cur->name);
+                    ret = false;
                 }
 
                 grandchild_node = grandchild_node->next;
             }
+        }
+        else if (cur->type != XML_TEXT_NODE)
+        {
+            qemu_log("fault ENTRY %d syntax error: unknown element %s\n", num_list_elements, cur->name);
+            ret = false;
         }
 
         cur = cur->next;
@@ -534,7 +791,7 @@ static void parseFault(xmlDocPtr doc, xmlNodePtr cur)
 
     add_to_fault_list(&fault);
 
-    return;
+    return ret;
 }
 
 /**
@@ -544,39 +801,39 @@ static void parseFault(xmlDocPtr doc, xmlNodePtr cur)
  * @param[in] mon - Reference to the QEMU-monitor
  * @param[in] filename - The name of the XML-file containing the fault definitions
  */
-static int parseFile(Monitor *mon, const char *filename)
+static int parseFile(const char *filename)
 {
+    int had_parser_errors = 0;
+    int ret = -1;
     xmlDocPtr doc;
     xmlNodePtr cur;
 
     doc = xmlParseFile(filename);
-    if (doc == NULL)
+    if (!doc)
     {
-        monitor_printf(mon, "Document not parsed successfully.\n");
+        qemu_log("Document not parsed successfully.\n");
         return -1;
     }
 
     cur = xmlDocGetRootElement(doc);
-    if (cur == NULL)
+    if (!cur)
     {
-        monitor_printf(mon, "Empty document\n");
-        xmlFreeDoc(doc);
-        return -1;
+        qemu_log("Empty document\n");
+        goto fail;
     }
 
 
     if (xmlStrcmp(cur->name, (const xmlChar *) "injection"))
     {
-        monitor_printf(mon, "Document of the wrong type, root node != injection\n");
-        xmlFreeDoc(doc);
-        return -1;
+        qemu_log("Document of the wrong type, root node != injection\n");
+        goto fail;
     }
 
     /**
      * Starting new fault injection experiment -
      * Deleting current context
      */
-    if (head != NULL)
+    if (head)
         delete_fault_list();
 
     destroy_id_array();
@@ -587,15 +844,36 @@ static int parseFile(Monitor *mon, const char *filename)
     {
         if (!xmlStrcmp(cur->name, (const xmlChar *) "fault"))
         {
-            parseFault(doc, cur);
+            if (!parseFaultFromXML(doc, cur))
+                had_parser_errors++;
         }
-
+        else if (cur->type != XML_TEXT_NODE)
+        {
+            qemu_log("Syntax error: unknown element %s\n", cur->name);
+            had_parser_errors++;
+        }
         cur = cur->next;
     }
 
-    validateXMLInput();
+    if (had_parser_errors)
+    {
+        qemu_log("Fault parsing from XML failed. Failed to parse %d rules out of %d recognized fault entries.\n", had_parser_errors, num_list_elements);
+        goto fail;
+    }
+
+    qemu_log("Fault parsing from XML successful\n.");
+
+    if (!validateFaultList())
+    {
+        qemu_log("Fault definition invalid, see above for detected logic issues.\n");
+        goto fail;
+    }
+
+    ret = 0;
+
+fail:
     xmlFreeDoc(doc);
-    return 0;
+    return ret;
 }
 
 /**
@@ -631,11 +909,20 @@ void qmp_fault_reload(Monitor *mon, const char *filename, Error **errp)
 
     LIBXML_TEST_VERSION
 
-    if (parseFile(mon, filename))
-        monitor_printf(mon, "Configuration file not loaded\n");
+    if (parseFile(filename))
+    {
+        if (mon)
+            monitor_printf(mon, "FIESER: Could not load configuration file\n");
+        else
+            qemu_log("FIESER: Could not load configuration file\n");
+    }
     else
-        monitor_printf(mon, "Configuration file loaded successfully\n");
-
+    {
+        if (mon)
+            monitor_printf(mon, "FIESER: Configuration file loaded successfully\n");
+        else
+            qemu_log("FIESER: Configuration file loaded successfully\n");
+    }
 #if defined(DEBUG_FAULT_LIST)
     print_fault_list();
 #endif

@@ -343,7 +343,7 @@ static void monitor_puts(Monitor *mon, const char *str)
             break;
         if (c == '\n') {
             qstring_append_chr(mon->outbuf, '\r');
-            data_collector_write(qstring_get_str(mon->outbuf));
+            qemu_log("%s", qstring_get_str(mon->outbuf));
         }
         qstring_append_chr(mon->outbuf, c);
         if (c == '\n') {
@@ -2620,7 +2620,7 @@ static const char *get_command_name(const char *cmdline,
     memcpy(cmdname, pstart, len);
     cmdname[len] = '\0';
 // CF FIES    
-    data_collector_write(cmdname);
+    qemu_log("%s", cmdname);
 // CF FIES END
     return p;
 }
@@ -4091,19 +4091,6 @@ void monitor_init(Chardev *chr, int flags)
     static int is_first_init = 1;
     Monitor *mon;
 
-// CF FIES
-    if (get_do_fault_injection())
-    {
-    	data_collector = fopen(DATA_COLLECTOR_FILENAME, "w");
-    	if (data_collector == NULL)
-    	{
-            fprintf(stderr, "Error opening file!\n");
-    	    exit(1);
-    	}
-    	fclose(data_collector);
-    }
-// CF FIES END
-
     if (is_first_init) {
         monitor_qapi_event_init();
         sortcmdlist();
@@ -4135,9 +4122,7 @@ void monitor_init(Chardev *chr, int flags)
 
     qemu_mutex_lock(&monitor_lock);
     QLIST_INSERT_HEAD(&mon_list, mon, entry);
-// CF FIES
-    FIESER_setMonitor(mon);
-// CF FIES END
+
     qemu_mutex_unlock(&monitor_lock);
 }
 
