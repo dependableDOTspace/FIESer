@@ -5,11 +5,19 @@
  * 
  *  Created on: 05.08.2014
  *      Author: Gerhard Schoenfelder
+ * 
+ * License: GNU GPL, version 2 or later.
+ *   See the COPYING file in the top-level directory.
  */
 
-#include <stdlib.h>
-#include <stdint.h>
+#include "fault-injection-infrastructure.h"
 #include "fault-injection-collector.h"
+
+/**
+ * Defines the name and path of the file, where the data collector writes
+ * his information to.
+ */
+#define DATA_COLLECTOR_FILENAME "fies.log"
 
 /**
  * The file, where the data collector writes
@@ -22,26 +30,6 @@ FILE *data_collector;
  * to the specified file or not.
  */
 static int do_fault_injection = 0;
-
-/**
- * Appends the content to the opened collector-file.
- *
- * @param[in] buf - the text, which should be written.
- */
-void data_collector_write(const char* buf)
-{
-    if (do_fault_injection)
-    {
-        data_collector = fopen("fies.log", "a+");
-        if (data_collector == NULL)
-        {
-            fprintf(stderr, "File  does not exists!\n");
-            exit(1);
-        }
-        fprintf(data_collector, "%s\n", (const uint8_t *) buf);
-        fclose(data_collector);
-    }
-}
 
 /**
  * Sets the flag, which decides if the collector should write
@@ -59,7 +47,7 @@ void set_do_fault_injection(int flag)
 }
 
 /**
- * Sets the flag, which decides if the collector should write
+ * Get the flag, which decides if the collector should write
  * his content to the specified file or not. This flag is set in
  * the main-function if the argument-vector (argv) contains
  * the paramter "-fi".
