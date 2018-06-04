@@ -32,7 +32,6 @@ tb_lookup__cpu_state(CPUState *cpu, target_ulong *pc, target_ulong *cs_base,
     cpu_get_tb_cpu_state(env, pc, cs_base, flags);
 // CF FIES
     // FIESER_init should actually go after start_tcg_kick_timer in qemu_tcg_rr_cpu_thread_fn
-    FIESER_init();
     FIESER_timed_terminate_check(env);
 // CF FIES END    
     hash = tb_jmp_cache_hash_func(*pc);

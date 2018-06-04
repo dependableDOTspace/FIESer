@@ -17,21 +17,10 @@ Building FIESer
 
 * Install required libraries as well as `libxml2-devel`, see http://wiki.qemu.org/Hosts/Linux 
 
-* Configure and build FIES for fault injection
+* Configure and build FIESer
 ```splus
-./configure --target-list=arm-softmmu --enable-sdl --extra-cflags="`xml2-config --cflags`" --extra-ldflags="`xml2-config --libs`" --python=`which python2` --disable-werror --enable-debug
-cd pixman
-./configure
-cd ..
-make -j `nproc --all`
-```
-
-* Configure and build FIES for easier debugging
-```splus
+# for easier debugging add --enable-debug (-O0, -g3 -gdwarf-2)
 ./configure --target-list=arm-softmmu --enable-sdl --extra-cflags="`xml2-config --cflags`" --extra-ldflags="`xml2-config --libs`" --python=`which python2` --disable-werror
-cd pixman
-./configure
-cd ..
 make -j `nproc --all`
 ```
 

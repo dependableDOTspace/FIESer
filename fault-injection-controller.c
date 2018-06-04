@@ -30,7 +30,8 @@
  * State of the different CPUs
  */
 static CPUState *next_cpu;
-
+int shutting_down = false;
+    
 static Monitor *qemu_serial_monitor;
 //unsigned int sbst_cycle_count_address = 0;
 //unsigned int fault_counter_address = 0;
@@ -1576,15 +1577,12 @@ void FIESER_hook(CPUArchState *env, hwaddr *addr,
 
 void FIESER_timed_terminate_check(CPUArchState *env)
 {
-    static int shutting_down = 0;
 
     CPUState *cpu;
 
     //if (sbst_cycle_count_value > SBST_CYCLES_BEFORE_EXIT && !shutting_down)
-    if (false && !shutting_down)
+    if (unlikely(shutting_down))
     {
-        shutting_down = 1;
-        fclose(outfile);
 
         hmp_info_faults(qemu_serial_monitor, NULL);
 
@@ -1602,7 +1600,7 @@ void FIESER_init(void)
 {
     static int already_set = false;
 
-    if (already_set)
+    if (likely(already_set))
         return;
 
     already_set = true;

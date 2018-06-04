@@ -218,7 +218,7 @@ static int validateFaultList(void)
 {
     int ret = true;
     FaultList *fault = head;
-    char msg_template[] = "fault id %d semantic error: %s\n";
+    char msg_template[] = "FIESER: fault id %d semantic error: %s\n";
 
     while (fault != NULL)
     {
@@ -513,7 +513,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             if (!fault.id)
             {
                 ret = false;
-                qemu_log("fault ENTRY %d: id '%s' is not an integer > 0\n", num_list_elements, key);
+                qemu_log("FIESER: fault ENTRY %d: id '%s' is not an integer > 0\n", num_list_elements, key);
             }
 
             xmlFree(key);
@@ -537,7 +537,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             else
             {
                 ret = false;
-                qemu_log("fault %d syntax error: <component> has to be \"CPU, REGISTER or RAM\", was %s\n", fault.id, key);
+                qemu_log("FIESER: fault %d syntax error: <component> has to be \"CPU, REGISTER or RAM\", was %s\n", fault.id, key);
             }
             xmlFree(key);
         }
@@ -596,7 +596,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             else
             {
                 ret = false;
-                qemu_log("fault %d syntax error: <target> has to be \"REGISTER CELL, MEMORY CELL, "
+                qemu_log("FIESER: fault %d syntax error: <target> has to be \"REGISTER CELL, MEMORY CELL, "
                          "CONDITION FLAGS, INSTRUCTION EXECUTION, INSTRUCTION DECODER, "
                          "ADDRESS DECODER, FI_TAGT_RW_LOGIC, TRACE MEM ACCESS/REGISTERS/PC/CPSR\", was %s\n", fault.id, key);
             }
@@ -641,7 +641,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             else
             {
                 ret = false;
-                qemu_log("fault %d syntax error: <mode> not recognized: %s\n", fault.id, key);
+                qemu_log("FIESER: fault %d syntax error: <mode> not recognized: %s\n", fault.id, key);
             }
             xmlFree(key);
         }
@@ -664,7 +664,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             else
             {
                 ret = false;
-                qemu_log("fault %d syntax error: <trigger> has to be \"ACCESS, TIME or PC\", was %s\n", fault.id, key);
+                qemu_log("FIESER: fault %d syntax error: <trigger> has to be \"ACCESS, TIME or PC\", was %s\n", fault.id, key);
             }
             xmlFree(key);
         }
@@ -687,7 +687,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             else
             {
                 ret = false;
-                qemu_log("fault %d syntax error: <type> has to be \"TRANSIENT, PERMANENT or INTERMITTENT\", was %s\n", fault.id, key);
+                qemu_log("FIESER: fault %d syntax error: <type> has to be \"TRANSIENT, PERMANENT or INTERMITTENT\", was %s\n", fault.id, key);
             }
             xmlFree(key);
         }
@@ -700,7 +700,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             if (!ok)
             {
                 ret = false;
-                qemu_log("fault %d syntax error: <timer> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
+                qemu_log("FIESER: fault %d syntax error: <timer> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
             }
 
             xmlFree(key);
@@ -714,7 +714,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             if (!ok)
             {
                 ret = false;
-                qemu_log("fault %d syntax error: <duration> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
+                qemu_log("FIESER: fault %d syntax error: <duration> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
             }
             xmlFree(key);
         }
@@ -727,7 +727,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
             if (!ok)
             {
                 ret = false;
-                qemu_log("fault %d syntax error: <interval> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
+                qemu_log("FIESER: fault %d syntax error: <interval> has to be a positive integer ending in NS/MS/US, was %s\n", fault.id, key);
             }
             xmlFree(key);
         }
@@ -773,7 +773,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
                 }
                 else if (grandchild_node->type != XML_TEXT_NODE)
                 {
-                    qemu_log("fault ENTRY %d syntax error in <param>: unknown element %s\n", num_list_elements, cur->name);
+                    qemu_log("FIESER: fault ENTRY %d syntax error in <param>: unknown element %s\n", num_list_elements, cur->name);
                     ret = false;
                 }
 
@@ -782,7 +782,7 @@ static int parseFaultFromXML(xmlDocPtr doc, xmlNodePtr cur)
         }
         else if (cur->type != XML_TEXT_NODE)
         {
-            qemu_log("fault ENTRY %d syntax error: unknown element %s\n", num_list_elements, cur->name);
+            qemu_log("FIESER: fault ENTRY %d syntax error: unknown element %s\n", num_list_elements, cur->name);
             ret = false;
         }
 
@@ -849,7 +849,7 @@ static int parseFile(const char *filename)
         }
         else if (cur->type != XML_TEXT_NODE)
         {
-            qemu_log("Syntax error: unknown element %s\n", cur->name);
+            qemu_log("FIESER: Syntax error: unknown element %s\n", cur->name);
             had_parser_errors++;
         }
         cur = cur->next;
@@ -857,15 +857,15 @@ static int parseFile(const char *filename)
 
     if (had_parser_errors)
     {
-        qemu_log("Fault parsing from XML failed. Failed to parse %d rules out of %d recognized fault entries.\n", had_parser_errors, num_list_elements);
+        qemu_log("FIESER: Fault parsing from XML failed. Failed to parse %d rules out of %d recognized fault entries.\n", had_parser_errors, num_list_elements);
         goto fail;
     }
 
-    qemu_log("Fault parsing from XML successful\n.");
+    qemu_log("Fault parsing from XML successful.\n");
 
     if (!validateFaultList())
     {
-        qemu_log("Fault definition invalid, see above for detected logic issues.\n");
+        qemu_log("FIESER: Fault definition invalid, see above for detected logic issues.\n");
         goto fail;
     }
 
